@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workout Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Workout Tracker</h1>
+  </header>
+
+  <!-- Workout Management Section -->
+  <section id="workoutManagement">
+    <h2>Create Workout</h2>
+    <form id="workoutForm">
+      <label for="exerciseSelect">Choose Exercise:</label>
+      <select id="exerciseSelect">
+        <!-- Options will be dynamically populated -->
+      </select>
+      <button type="button" id="addExerciseBtn">Add Exercise</button>
+    </form>
+
+    <div id="exerciseList">
+      <h3>Exercises</h3>
+      <!-- List of added exercises will appear here -->
+    </div>
+    <button id="saveWorkoutBtn">Save Workout</button>
+  </section>
+
+  <!-- Add Exercise Section -->
+  <section id="addExerciseSection">
+    <h2>Add New Exercise</h2>
+    <form id="addExerciseForm">
+      <label for="newExerciseName">Exercise Name:</label>
+      <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
+      
+      <label for="exerciseCategory">Choose Category:</label>
+      <select id="exerciseCategory">
+        <option value="upper body">Upper body</option>
+        <option value="core">Core</option>
+        <option value="legs">Legs</option>
+        <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
+        <option value="misc. physio">Misc. physio</option>
+        <option value="full body">Full Body</option>
+        <option value="activity">Activity</option>
+        <!-- Add more categories as needed -->
+      </select>
+      
+      <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
+    </form>
+  </section>
+
+  <!-- Saved Workouts Section -->
+  <div id="savedWorkoutList">
+    <!-- Saved workouts will appear here -->
+  </div>
+
+  <!-- Firebase SDK 8.x -->
+  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-database.js"></script>
+
+  <!-- JavaScript -->
+  <script src="js/app.js" defer></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 // Firebase configuration (replace with your project details)
 const firebaseConfig = {
-  apiKey: "AIzaSyAvY5rVn4L0YpYG9YoHJHAQJiuyShB6z48",
+  apiKey: "AIzaSyAvY5Rvn4L0YpYG9YoHJHAQJiuyShB6z48",
   authDomain: "workouts-725cd.firebaseapp.com",
   databaseURL: "https://workouts-725cd-default-rtdb.europe-west1.firebasedatabase.app/",
   projectId: "workouts-725cd",
@@ -25,9 +25,17 @@ const saveNewExerciseBtn = document.getElementById('saveNewExerciseBtn');
 
 const selectedExercises = []; // Array to hold the list of added exercises
 
+
+
+
+// Firebase reference for workout drafts
+const workoutDraftRef = database.ref('workoutDraft');
+
 // Clear any leftover hardcoded dropdown options
 function clearDropdown() {
+  console.log()
   exerciseSelect.innerHTML = ''; // Clear all options
+  console.log()
 }
 
 // Load exercises dynamically and populate the dropdown
@@ -81,44 +89,97 @@ function saveExerciseToDatabase(name, category) {
   exercisesRef.push({ name });
 }
 
-// Add selected exercise to the workout list
 addExerciseBtn.addEventListener('click', () => {
   const selectedOption = exerciseSelect.options[exerciseSelect.selectedIndex];
   const exerciseName = selectedOption.text;
 
   // Avoid adding duplicate exercises
   if (!selectedOption.value || selectedExercises.some(e => e.name === exerciseName)) {
+    alert("Exercise already exists")
     return;
   }
 
-  // Add exercise to the list
-  selectedExercises.push({ name: exerciseName, sets: 0, reps: 0 });
+  // Add exercise to the list with an initial "hidden" state for sets/reps
+  selectedExercises.push({ name: exerciseName, sets: 0, reps: 0, note: '', showSR: false });
   renderExerciseList();
+  saveWorkoutDraft(); // Save the draft after adding an exercise
 });
+
+// Load existing workout draft on page load
+function loadWorkoutDraft() {
+  workoutDraftRef.once('value', (snapshot) => {
+    const draft = snapshot.val();
+    if (draft && draft.exercises) {
+      selectedExercises.push(...draft.exercises); // Populate draft exercises
+      renderExerciseList(); // Render the draft
+    }
+  });
+}
+
+// Save the workout draft to Firebase
+function saveWorkoutDraft() {
+  const draft = {
+    exercises: selectedExercises,
+    date: getToday()
+  };
+
+  workoutDraftRef.set(draft, (error) => {
+    if (error) {
+      console.error('Error saving workout draft:', error);
+    }
+  });
+}
+
+// Clear the workout draft from Firebase (after saving the workout)
+function clearWorkoutDraft() {
+  workoutDraftRef.remove((error) => {
+    if (error) {
+      console.error('Error clearing workout draft:', error);
+    }
+  });
+}
 
 // Render the exercise list dynamically
 function renderExerciseList() {
   exerciseList.innerHTML = ''; // Clear the list
 
   selectedExercises.forEach((exercise, index) => {
-    const exerciseDiv = document.createElement('div');
-    exerciseDiv.className = 'exercise-item';
+    const exerciseDiv = document.createElement('row');
+    exerciseDiv.className = 'exercise-item p-3';
+
+    const setsRepsText = (exercise.sets || exercise.reps)
+      ? `${exercise.sets ? `${exercise.sets} sets` : ''} ${exercise.reps ? `x ${exercise.reps} reps` : ''}`
+      : '';
+    const noteText = exercise.note ? ` ` : '';
 
     exerciseDiv.innerHTML = `
-      <span>${exercise.name}</span>
-      <input type="number" placeholder="Sets" class="sets-input" data-index="${index}" value="${exercise.sets}">
-      <input type="number" placeholder="Reps" class="reps-input" data-index="${index}" value="${exercise.reps}">
-      <button class="remove-btn" data-index="${index}">Remove</button>
-    `;
+    <div class="row align-items-center">
+      <div class="col-4">${exercise.name}</div>
+      <div class="col-1">        <input type="number" class="form-control sets-input" placeholder="Sets" data-index="${index}" value="${exercise.sets}">
+      </div>
+      <div class="col-1">        <input type="number" class="form-control reps-input" placeholder="Reps" data-index="${index}" value="${exercise.reps}">
+      </div>
+      <div class="col-2">        <input type="text" class="form-control note-input" placeholder="Add a note" data-index="${index}" value="${exercise.note}">
+      </div>
+      <div class="col-1">        <button class="btn btn-danger remove-btn" data-index="${index}">Remove</button>
+      </div>
+    </div>
+  `;
+  
 
     exerciseList.appendChild(exerciseDiv);
   });
 
-  // Event listeners for inputs and remove buttons
+  addDraftListeners(); // Add listeners to save draft on changes
+}
+
+// Add listeners for input changes to save the draft
+function addDraftListeners() {
   document.querySelectorAll('.sets-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const index = e.target.dataset.index;
       selectedExercises[index].sets = parseInt(e.target.value) || 0;
+      saveWorkoutDraft(); // Save the draft after modifying sets
     });
   });
 
@@ -126,6 +187,15 @@ function renderExerciseList() {
     input.addEventListener('input', (e) => {
       const index = e.target.dataset.index;
       selectedExercises[index].reps = parseInt(e.target.value) || 0;
+      saveWorkoutDraft(); // Save the draft after modifying reps
+    });
+  });
+
+  document.querySelectorAll('.note-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = e.target.dataset.index;
+      selectedExercises[index].note = e.target.value.trim();
+      saveWorkoutDraft(); // Save the draft after modifying notes
     });
   });
 
@@ -134,6 +204,7 @@ function renderExerciseList() {
       const index = e.target.dataset.index;
       selectedExercises.splice(index, 1); // Remove exercise
       renderExerciseList();
+      saveWorkoutDraft(); // Save the draft after removing an exercise
     });
   });
 }
@@ -154,6 +225,7 @@ saveWorkoutBtn.addEventListener('click', () => {
   alert('Workout saved successfully!');
   selectedExercises.length = 0; // Clear list after saving
   renderExerciseList();
+  clearWorkoutDraft(); // Clear draft after saving workout
 });
 
 // Firebase function to save workout
@@ -172,6 +244,21 @@ function loadWorkouts() {
   });
 }
 
+
+const toggleFormBtn = document.getElementById('toggleFormBtn');
+const addExerciseSection = document.getElementById('addExerciseSection');
+
+toggleFormBtn.addEventListener('click', () => {
+  // Toggle the 'hidden' class
+  addExerciseSection.classList.toggle('hidden');
+
+  // Change the button text based on visibility
+  toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden') 
+    ? 'Create new exercise' 
+    : 'Hide';
+});
+
+
 // Render saved workouts
 function renderSavedWorkouts(workouts) {
   savedWorkoutList.innerHTML = ''; // Clear saved workouts
@@ -181,23 +268,34 @@ function renderSavedWorkouts(workouts) {
     workoutDiv.className = 'saved-workout';
 
     const date = workout.date;
-    const exercises = workout.exercises.map(e => `${e.name}: ${e.sets} sets x ${e.reps} reps`).join('<br>');
+    const exercises = workout.exercises.map(e => {
+      const setsRepsText = (e.sets || e.reps)
+        ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
+        : '';
+      const noteText = e.note ? ` ${e.note}` : '';
+      return `${e.name}: ${setsRepsText} ${noteText}`;
+    }).join('<br>');
 
     workoutDiv.innerHTML = `
-      <h3>Workout on ${date}</h3>
-      <p>${exercises}</p>
+      <p>Workout on ${date} <br> ${exercises}</p>
     `;
 
     savedWorkoutList.appendChild(workoutDiv);
   });
 }
 
-// Utility to get today's date
+// Utility function to get today's date in YYYY-MM-DD format
 function getToday() {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const now = new Date();
+  return now.toISOString().split('T')[0]; // Get only the date part
 }
 
-// Load exercises and saved workouts on page load
-loadExercises();
-loadWorkouts();
+// Initialize the app
+function init() {
+  loadExercises(); // Load exercises into dropdown
+  loadWorkouts(); // Load saved workouts
+  loadWorkoutDraft(); // Load draft workout
+}
+
+// Start the app
+init();

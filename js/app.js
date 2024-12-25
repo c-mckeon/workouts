@@ -25,17 +25,15 @@ const saveNewExerciseBtn = document.getElementById('saveNewExerciseBtn');
 
 const selectedExercises = []; // Array to hold the list of added exercises
 
-
-
-
 // Firebase reference for workout drafts
 const workoutDraftRef = database.ref('workoutDraft');
 
+// Current workout intensity
+let currentWorkout = { intensity: '' };
+
 // Clear any leftover hardcoded dropdown options
 function clearDropdown() {
-  console.log()
   exerciseSelect.innerHTML = ''; // Clear all options
-  console.log()
 }
 
 // Load exercises dynamically and populate the dropdown
@@ -111,6 +109,9 @@ function loadWorkoutDraft() {
     const draft = snapshot.val();
     if (draft && draft.exercises) {
       selectedExercises.push(...draft.exercises); // Populate draft exercises
+      if (draft.intensity) {
+        currentWorkout.intensity = draft.intensity; // Load intensity
+      }
       renderExerciseList(); // Render the draft
     }
   });
@@ -120,6 +121,7 @@ function loadWorkoutDraft() {
 function saveWorkoutDraft() {
   const draft = {
     exercises: selectedExercises,
+    intensity: document.getElementById('workoutIntensity')?.value || '', // Save intensity
     date: getToday()
   };
 
@@ -145,31 +147,43 @@ function renderExerciseList() {
 
   selectedExercises.forEach((exercise, index) => {
     const exerciseDiv = document.createElement('row');
-    exerciseDiv.className = 'exercise-item p-3';
-
-    const setsRepsText = (exercise.sets || exercise.reps)
-      ? `${exercise.sets ? `${exercise.sets} sets` : ''} ${exercise.reps ? `x ${exercise.reps} reps` : ''}`
-      : '';
-    const noteText = exercise.note ? ` ` : '';
+    exerciseDiv.className = 'exercise-item';
 
     exerciseDiv.innerHTML = `
-    <div class="row align-items-center">
-      <div class="col-4">${exercise.name}</div>
-      <div class="col-1">        <input type="number" class="form-control sets-input" placeholder="Sets" data-index="${index}" value="${exercise.sets}">
+    <div class="row p-1">
+      <div class="col-3">${exercise.name}</div>
+      <div class="col-1">
+        <input type="number" class="form-control sets-input" placeholder="Sets" data-index="${index}" 
+          value="${exercise.sets !== 0 ? exercise.sets : ''}">
       </div>
-      <div class="col-1">        <input type="number" class="form-control reps-input" placeholder="Reps" data-index="${index}" value="${exercise.reps}">
+      <div class="col-1">
+        <input type="number" class="form-control reps-input" placeholder="Reps" data-index="${index}" 
+          value="${exercise.reps !== 0 ? exercise.reps : ''}">
       </div>
-      <div class="col-2">        <input type="text" class="form-control note-input" placeholder="Add a note" data-index="${index}" value="${exercise.note}">
+      <div class="col-2">
+        <input type="text" class="form-control note-input" placeholder="Add a note" data-index="${index}" 
+          value="${exercise.note || ''}">
       </div>
-      <div class="col-1">        <button class="btn btn-danger remove-btn" data-index="${index}">Remove</button>
+      <div class="col-1">
+        <button class="btn btn-danger remove-btn" data-index="${index}">X</button>
       </div>
     </div>
-  `;
-  
-
+    `;
     exerciseList.appendChild(exerciseDiv);
   });
 
+  // Add intensity field (global for the workout, not per exercise)
+  const intensityDiv = document.createElement('div');
+  intensityDiv.className = 'row p-1';
+
+  intensityDiv.innerHTML = `
+    <div class="col-3" id="intensityrow" >Workout Intensity</div>
+    <div class="col-2">
+      <input type="number" id="workoutIntensity" class="form-control" placeholder="1-10" min="1" max="10" value="${currentWorkout.intensity || ''}">
+    </div>
+  `;
+
+  exerciseList.appendChild(intensityDiv); // Append the intensity field
   addDraftListeners(); // Add listeners to save draft on changes
 }
 
@@ -218,84 +232,71 @@ saveWorkoutBtn.addEventListener('click', () => {
 
   const workout = {
     date: getToday(),
-    exercises: selectedExercises
+    exercises: selectedExercises,
+    intensity: document.getElementById('workoutIntensity')?.value || '' // Include intensity
   };
 
   saveWorkout(workout);
   alert('Workout saved successfully!');
-  selectedExercises.length = 0; // Clear list after saving
-  renderExerciseList();
-  clearWorkoutDraft(); // Clear draft after saving workout
 });
 
-// Firebase function to save workout
+// Save workout in Firebase under "workouts" node
 function saveWorkout(workout) {
   const workoutsRef = database.ref('workouts');
-  workoutsRef.push(workout);
+  workoutsRef.push(workout, (error) => {
+    if (error) {
+      console.error('Error saving workout:', error);
+    } else {
+      // Clear the workout draft after saving
+      clearWorkoutDraft();
+      renderSavedWorkouts(); // Refresh the list of saved workouts
+    }
+  });
 }
 
-// Load saved workouts from Firebase
-function loadWorkouts() {
+// Render saved workouts from Firebase
+function renderSavedWorkouts() {
   const workoutsRef = database.ref('workouts');
-  workoutsRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    const workouts = data ? Object.values(data) : [];
-    renderSavedWorkouts(workouts);
+  workoutsRef.once('value', (snapshot) => {
+    const workouts = snapshot.val();
+    savedWorkoutList.innerHTML = ''; // Clear saved workouts
+
+    if (!workouts) return;
+
+    Object.keys(workouts).forEach(workoutId => {
+      const workout = workouts[workoutId];
+      const workoutDiv = document.createElement('div');
+      workoutDiv.className = 'saved-workout';
+
+      const date = workout.date;
+      const intensity = workout.intensity ? `Intensity: ${workout.intensity}/10<br>` : '';
+      const exercises = workout.exercises.map(e => {
+        const setsRepsText = (e.sets || e.reps)
+          ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
+          : '';
+        const noteText = e.note ? ` ${e.note}` : '';
+        return `${e.name}: ${setsRepsText} ${noteText}`;
+      }).join('<br>');
+
+      workoutDiv.innerHTML = `
+        <p>Workout on ${date}<br>${intensity}${exercises}</p>
+      `;
+
+      savedWorkoutList.appendChild(workoutDiv);
+    });
   });
 }
 
-
-const toggleFormBtn = document.getElementById('toggleFormBtn');
-const addExerciseSection = document.getElementById('addExerciseSection');
-
-toggleFormBtn.addEventListener('click', () => {
-  // Toggle the 'hidden' class
-  addExerciseSection.classList.toggle('hidden');
-
-  // Change the button text based on visibility
-  toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden') 
-    ? 'Create new exercise' 
-    : 'Hide';
-});
-
-
-// Render saved workouts
-function renderSavedWorkouts(workouts) {
-  savedWorkoutList.innerHTML = ''; // Clear saved workouts
-
-  workouts.forEach(workout => {
-    const workoutDiv = document.createElement('div');
-    workoutDiv.className = 'saved-workout';
-
-    const date = workout.date;
-    const exercises = workout.exercises.map(e => {
-      const setsRepsText = (e.sets || e.reps)
-        ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
-        : '';
-      const noteText = e.note ? ` ${e.note}` : '';
-      return `${e.name}: ${setsRepsText} ${noteText}`;
-    }).join('<br>');
-
-    workoutDiv.innerHTML = `
-      <p>Workout on ${date} <br> ${exercises}</p>
-    `;
-
-    savedWorkoutList.appendChild(workoutDiv);
-  });
-}
-
-// Utility function to get today's date in YYYY-MM-DD format
+// Helper function to get the current date in YYYY-MM-DD format
 function getToday() {
-  const now = new Date();
-  return now.toISOString().split('T')[0]; // Get only the date part
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = (today.getMonth() + 1).toString().padStart(2, '0');
+  const day = today.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Initialize the app
-function init() {
-  loadExercises(); // Load exercises into dropdown
-  loadWorkouts(); // Load saved workouts
-  loadWorkoutDraft(); // Load draft workout
-}
-
-// Start the app
-init();
+loadExercises();
+loadWorkoutDraft();
+renderSavedWorkouts();  // Ensure saved workouts are shown when the app loads

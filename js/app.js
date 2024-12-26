@@ -254,6 +254,22 @@ function saveWorkout(workout) {
   });
 }
 
+const toggleFormBtn = document.getElementById('toggleFormBtn');
+const addExerciseSection = document.getElementById('addExerciseSection');
+
+toggleFormBtn.addEventListener('click', () => {
+  // Toggle the 'hidden' class
+  addExerciseSection.classList.toggle('hidden');
+
+  // Change the button text based on visibility
+  toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
+    ? 'Create new exercise'
+
+    : 'Hide';
+});
+
+
+
 // Render saved workouts from Firebase
 function renderSavedWorkouts() {
   const workoutsRef = database.ref('workouts');

@@ -173,14 +173,16 @@ function renderExerciseList() {
   });
 
   // Add intensity field (global for the workout, not per exercise)
-  const intensityDiv = document.createElement('div');
-  intensityDiv.className = 'row p-1';
+  const intensityDiv = document.createElement('row');
+  intensityDiv.className = 'introw';
 
   intensityDiv.innerHTML = `
-    <div class="col-3" id="intensityrow" >Workout Intensity</div>
-    <div class="col-2">
-      <input type="number" id="workoutIntensity" class="form-control" placeholder="1-10" min="1" max="10" value="${currentWorkout.intensity || ''}">
-    </div>
+  <div class="row p-1">
+  <div class="col-3">Workout Intensity</div>
+  <div class="col-2">
+    <input type="number" id="workoutIntensity" class="form-control" placeholder="1-10" min="1" max="10" value="${currentWorkout.intensity || ''}">
+  </div>
+  <div class="col-1"></div></div> <!-- Empty column to balance the grid -->
   `;
 
   exerciseList.appendChild(intensityDiv); // Append the intensity field

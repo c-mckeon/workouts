@@ -1,4 +1,12 @@
 #exerciseList {
-    border-left: 20px solid rgb(4, 84, 255); /* Adds a blue border to the left */
+    border-left: 0px solid rgb(255, 255, 255); /* Adds a blue border to the left */
 }
 
+
+#test {
+    border-left: 20px solid rgb(82, 63, 255); /* Adds a blue border to the left */
+}
+
+#introwcss {
+    border-left: 20px solid rgb(49, 160, 66); /* Adds a blue border to the left */
+}

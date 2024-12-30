@@ -29,12 +29,20 @@ const selectedExercises = []; // Array to hold the list of added exercises
 const workoutDraftRef = database.ref('workoutDraft');
 
 // Current workout intensity
-let currentWorkout = { intensity: '' };
+let currentWorkout = { intensity: '', intensityNote: '' };
 
 // Clear any leftover hardcoded dropdown options
 function clearDropdown() {
   exerciseSelect.innerHTML = ''; // Clear all options
 }
+
+// Add the placeholder option
+const placeholderOption = document.createElement('option');
+placeholderOption.value = ''; // Set the value to empty
+placeholderOption.textContent = 'Choose Exercise'; // Placeholder text
+placeholderOption.disabled = true; // Disable the option
+placeholderOption.selected = true; // Make it selected by default
+exerciseSelect.appendChild(placeholderOption); // Add the placeholder to the dropdown
 
 // Load exercises dynamically and populate the dropdown
 function loadExercises() {
@@ -45,10 +53,19 @@ function loadExercises() {
   });
 }
 
-// Render the exercise dropdown dynamically
+// Render the exercise dropdown dynamically with a placeholder
 function renderExerciseDropdown(exercises) {
   clearDropdown(); // Clear existing options
 
+  // Add the placeholder option
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = ''; // Set the value to empty
+  placeholderOption.textContent = 'Select'; // Placeholder text
+  placeholderOption.disabled = true; // Disable the option
+  placeholderOption.selected = true; // Make it selected by default
+  exerciseSelect.appendChild(placeholderOption); // Add the placeholder to the dropdown
+
+  // Now add the categories and exercises
   for (const category in exercises) {
     const optgroup = document.createElement('optgroup');
     optgroup.label = category.replace('_', ' ').toUpperCase(); // Format category name
@@ -112,6 +129,9 @@ function loadWorkoutDraft() {
       if (draft.intensity) {
         currentWorkout.intensity = draft.intensity; // Load intensity
       }
+      if (draft.intensityNote) {
+        currentWorkout.intensityNote = draft.intensityNote; // Load intensity note
+      }
       renderExerciseList(); // Render the draft
     }
   });
@@ -122,6 +142,7 @@ function saveWorkoutDraft() {
   const draft = {
     exercises: selectedExercises,
     intensity: document.getElementById('workoutIntensity')?.value || '', // Save intensity
+    intensityNote: currentWorkout.intensityNote || '', // Save intensity note
     date: getToday()
   };
 
@@ -141,13 +162,14 @@ function clearWorkoutDraft() {
   });
 }
 
-// Render the exercise list dynamically
+// Render the exercise list dynamically, including intensity note field
 function renderExerciseList() {
   exerciseList.innerHTML = ''; // Clear the list
 
   selectedExercises.forEach((exercise, index) => {
     const exerciseDiv = document.createElement('row');
     exerciseDiv.className = 'exercise-item';
+    exerciseDiv.id = 'test';
 
     exerciseDiv.innerHTML = `
     <div class="row p-1">
@@ -172,15 +194,19 @@ function renderExerciseList() {
     exerciseList.appendChild(exerciseDiv);
   });
 
-  // Add intensity field (global for the workout, not per exercise)
+  // Add intensity field with intensity note (global for the workout, not per exercise)
   const intensityDiv = document.createElement('row');
   intensityDiv.className = 'introw';
+  intensityDiv.id = 'introwcss';
 
   intensityDiv.innerHTML = `
   <div class="row p-1">
   <div class="col-3">Workout Intensity</div>
   <div class="col-2">
     <input type="number" id="workoutIntensity" class="form-control" placeholder="1-10" min="1" max="10" value="${currentWorkout.intensity || ''}">
+  </div>
+  <div class="col-2">
+    <input type="text" id="workoutIntensityNote" class="form-control" placeholder="Misc. notes" value="${currentWorkout.intensityNote || ''}">
   </div>
   <div class="col-1"></div></div> <!-- Empty column to balance the grid -->
   `;
@@ -223,6 +249,18 @@ function addDraftListeners() {
       saveWorkoutDraft(); // Save the draft after removing an exercise
     });
   });
+
+  // Intensity input listener
+  document.getElementById('workoutIntensity').addEventListener('input', (e) => {
+    currentWorkout.intensity = e.target.value.trim();
+    saveWorkoutDraft(); // Save the draft after modifying intensity
+  });
+
+  // Intensity note input listener
+  document.getElementById('workoutIntensityNote').addEventListener('input', (e) => {
+    currentWorkout.intensityNote = e.target.value.trim();
+    saveWorkoutDraft(); // Save the draft after modifying intensity note
+  });
 }
 
 // Save workout to Firebase
@@ -235,7 +273,8 @@ saveWorkoutBtn.addEventListener('click', () => {
   const workout = {
     date: getToday(),
     exercises: selectedExercises,
-    intensity: document.getElementById('workoutIntensity')?.value || '' // Include intensity
+    intensity: document.getElementById('workoutIntensity')?.value || '', // Include intensity
+    intensityNote: currentWorkout.intensityNote || '' // Include intensity note
   };
 
   saveWorkout(workout);
@@ -266,11 +305,8 @@ toggleFormBtn.addEventListener('click', () => {
   // Change the button text based on visibility
   toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
     ? 'Create new exercise'
-
     : 'Hide';
 });
-
-
 
 // Render saved workouts from Firebase
 function renderSavedWorkouts() {
@@ -297,7 +333,7 @@ function renderSavedWorkouts() {
       }).join('<br>');
 
       workoutDiv.innerHTML = `
-        <p>Workout on ${date}<br>${intensity}${exercises}</p>
+        <p><strong>Workout on ${date}</strong><br>${intensity}${exercises}</p>
       `;
 
       savedWorkoutList.appendChild(workoutDiv);

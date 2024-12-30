@@ -9,16 +9,16 @@ function formatDate(dateString) {
 function getIntensityColor(intensity) {
   intensity = intensity || 5; // Default intensity is 5 if not provided
   intensity = Math.max(1, Math.min(10, intensity)); // Clamp intensity between 1 and 10
-  if (intensity === 1) return 'rgb(240, 240, 240)'; // Intensity 1: White
-  if (intensity === 2) return 'rgb(206, 218, 202)'; // Intensity 2: Light Gray
-  if (intensity === 3) return 'rgb(183, 223, 183)'; // Intensity 3: Pale Green
-  if (intensity === 4) return 'rgb(164, 226, 164)'; // Intensity 4: Lighter Green
-  if (intensity === 5) return 'rgb(120, 255, 120)'; // Intensity 5: Light Green
-  if (intensity === 6) return 'rgb(115, 193, 115)'; // Intensity 6: Medium Light Green
-  if (intensity === 7) return 'rgb(80, 160, 80)';  // Intensity 7: Medium Green
-  if (intensity === 8) return 'rgb(55, 123, 55)';  // Intensity 8: Darker Green
-  if (intensity === 9) return 'rgb(40, 97, 40)';   // Intensity 9: Dark Green
-  if (intensity === 10) return 'rgb(33, 99, 33)';  // Intensity 10: Darkest Green
+  if (intensity === 1) return 'rgb(230, 240, 230)'; // Intensity 1: White
+  if (intensity === 2) return 'rgb(210, 240, 206)'; // Intensity 2: Light Gray
+  if (intensity === 3) return 'rgb(183, 240, 183)'; // Intensity 3: Pale Green
+  if (intensity === 4) return 'rgb(160, 236, 160)'; // Intensity 4: Lighter Green
+  if (intensity === 5) return 'rgb(130, 230, 130)'; // Intensity 5: Light Green
+  if (intensity === 6) return 'rgb(105, 220, 105)'; // Intensity 6: Medium Light Green
+  if (intensity === 7) return 'rgb(100, 205, 100)';  // Intensity 7: Medium Green
+  if (intensity === 8) return 'rgb(85, 195, 85)';  // Intensity 8: Darker Green
+  if (intensity === 9) return 'rgb(70, 185, 70)';   // Intensity 9: Dark Green
+  if (intensity === 10) return 'rgb(65, 175, 65)';  // Intensity 10: Darkest Green
 }
 
 // Select the button element
@@ -26,10 +26,19 @@ const clickButton = document.querySelector('.click');
 
 // Add event listener for the click event
 clickButton.addEventListener('click', () => {
-  console.log('Button clicked. Running analytics...');
-  runanalytics(); // Save the draft after adding an exercise
-  generatevisuals(); // Ensure this function is defined elsewhere
+  const visualsContainer = document.querySelector('#visuals-container');
+
+  if (clickButton.textContent === 'Show chart') {
+    console.log('Button clicked. Running analytics...');
+    runanalytics(); // Save the draft after adding an exercise
+    generatevisuals(); // Ensure this function is defined elsewhere
+    clickButton.textContent = 'Hide chart'; // Change button text to "Hide"
+  } else {
+    visualsContainer.innerHTML = ''; // Clear the content of visuals container
+    clickButton.textContent = 'Show chart'; // Change button text to "Show chart"
+  }
 });
+
 
 async function runanalytics() {
   const sourceRef = firebase.database().ref('/'); // Root of the source database

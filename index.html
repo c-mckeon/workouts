@@ -9,15 +9,20 @@
 </head>
 <body>
   
-  <div class="header">
-    <h1>Workout Tracker</h1>
+  <div class="header" style="display: flex; align-items: center; margin-left: 20px;">
+    <h1 style="margin-right: 20px;">Workout Tracker</h1> <!-- Adding right margin to create space between the heading and the button -->
+  
+    <div class="col-sm-2" style="margin-left: 100px;">
+      <button type="button" id="validateBtn" class="btn btn-primary">Write access</button>
+    </div>
   </div>
+  
   
   <hr>
   <!-- Workout Management Section -->
   <div id="workoutManagement">
     
-    <h2>Create Workout</h2>
+    <div style="margin-left: 20px;"><h2>Create Workout</h2></div>
    
     <form id="workoutForm"> 
       
@@ -61,7 +66,7 @@
   <div class="row p-3" id="addExerciseSectiondiv">
     
     <div class="col-sm-2">
-      <button id="toggleFormBtn">Create new exercise</button>
+      <button id="toggleFormBtn">Create exercise</button>
     </div>
     
     <section id="addExerciseSection" class="hidden">
@@ -71,7 +76,8 @@
         
         <label for="exerciseCategory">Choose Category:</label>
         <select id="exerciseCategory">
-          <option value="upper body">Upper body</option>
+          <option value="upper body push">Upper body push</option>
+          <option value="upper body pull">Upper body pull</option>
           <option value="core">Core</option>
           <option value="legs">Legs</option>
           <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
@@ -84,15 +90,32 @@
         <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
       </form>
     </section>
+  </div>
+    <hr>
 
+
+<div class="row p-3">
+<div class="col-2" id="showchart">
+  <button class="click" >Show chart</button>
 </div>
 
+<div id="visuals-container"></div>
+</div>
 
     <hr>
-  <!-- Saved Workouts Section -->
-  <div class="row p-3"" id="savedWorkoutList">
-    <!-- Saved workouts will appear here -->
+
+
+    <div class="row p-3">
+    <div class="col-2" id="showworkouts">
+      <button class="click">Show workouts</button>
+    </div>
+    <!-- Saved Workouts Section -->
+    <div class="row p-3 hidden" id="savedWorkoutList">
+      <!-- Saved workouts will appear here -->
+    </div>
   </div>
+    
+    
 
   <!-- Firebase SDK 8.x -->
   <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
@@ -102,11 +125,8 @@
   <script src="js/app.js" defer></script>
   <script src="js/analytics.js" defer></script>
 
-  <div class="col-1">
-    <button class="click" > click</button>
-  </div>
-  
-  <div id="visuals-container"></div>
+
+  <hr>
 
   <style>
     /* Add styles for the toggle and fields */

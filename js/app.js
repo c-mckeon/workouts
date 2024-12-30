@@ -11,7 +11,79 @@ const firebaseConfig = {
 
 // Initialize Firebase (Firebase 8.x SDK)
 firebase.initializeApp(firebaseConfig);
+// Reference to the Firebase Realtime Database
+const validateBtn = document.getElementById('validateBtn');
 const database = firebase.database();
+let accessWindowActive = false; // Flag to track if access is currently granted
+
+// Listen for the validate button click
+validateBtn.addEventListener('click', () => {
+  // Set the current time as the start time in the database
+  const currentTime = Date.now();
+
+  // Set the 'validation_successful' flag and 'start_time' in the 'access_logs' node to the current time
+  database.ref('access_logs').set({
+    validation_successful: true,
+    start_time: currentTime
+  }).then(() => {
+    // Turn the button green as the access is granted for 3 hours
+    validateBtn.style.backgroundColor = 'green';
+    validateBtn.style.borderColor = 'green';
+
+    // Now retrieve the validation flag and start time from the 'access_logs' node
+    database.ref('access_logs').once('value').then(snapshot => {
+      const data = snapshot.val(); // Get the data from the database
+
+      // Check if the validation was successful
+      if (data && data.validation_successful) {
+        const startTime = data.start_time; // Get the stored timestamp
+
+        // Format the timestamp to show only hours and minutes
+        const date = new Date(startTime);
+        const formattedTime = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`; // HH:mm format
+
+        // Update the button text with the formatted time
+        validateBtn.textContent = `Access ok - ${formattedTime}`;
+      }
+    });
+
+    accessWindowActive = true;
+
+    // Set a timer to reset the button after 3 hours
+    setTimeout(() => {
+      accessWindowActive = false;
+      validateBtn.style.backgroundColor = '';  // Reset button color
+      validateBtn.textContent = 'Validate';  // Reset button text
+    }, 3 * 60 * 60 * 1000); // 3 hours in milliseconds
+  }).catch((error) => {
+    console.error("Error setting global access: ", error);
+  });
+});
+
+
+
+// Function to periodically check if the database access window is open
+function checkAccessWindow() {
+  // Get the start_time from the database
+  database.ref('global_access/start_time').once('value').then(snapshot => {
+    const startTime = snapshot.val();
+    const currentTime = Date.now();
+    
+    // If the access window has expired, reset the button
+    if (startTime && currentTime > startTime + 3 * 60 * 60 * 1000) {
+      accessWindowActive = false;
+      validateBtn.style.backgroundColor = '';  // Reset button color
+      validateBtn.textContent = 'Validate';  // Reset button text
+    }
+  });
+}
+
+// Periodically check the access window status every minute
+setInterval(checkAccessWindow, 60 * 1000); // Every 60 seconds
+
+
+
+
 
 // DOM Elements
 const exerciseSelect = document.getElementById('exerciseSelect');
@@ -304,9 +376,32 @@ toggleFormBtn.addEventListener('click', () => {
 
   // Change the button text based on visibility
   toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
-    ? 'Create new exercise'
+    ? 'Create exercise'
     : 'Hide';
 });
+
+// Select the button element for workouts
+const workoutButton = document.querySelector('#showworkouts .click');
+
+
+// Ensure the saved workouts list is hidden initially
+savedWorkoutList.classList.add('hidden');
+
+// Add event listener for the click event
+workoutButton.addEventListener('click', () => {
+  if (workoutButton.textContent === 'Show workouts') {
+    console.log('Displaying saved workouts...');
+    renderSavedWorkouts(); // Populate the workouts
+    savedWorkoutList.classList.remove('hidden'); // Make the workouts list visible
+    workoutButton.textContent = 'Hide workouts'; // Change button text to "Hide workouts"
+  } else {
+    savedWorkoutList.innerHTML = ''; // Clear the workouts content
+    savedWorkoutList.classList.add('hidden'); // Hide the workouts list
+    workoutButton.textContent = 'Show workouts'; // Change button text to "Show workouts"
+  }
+});
+
+
 
 // Render saved workouts from Firebase
 function renderSavedWorkouts() {

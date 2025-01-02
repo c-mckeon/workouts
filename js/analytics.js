@@ -348,10 +348,7 @@ document.getElementById("showcal").querySelector("button").addEventListener("cli
 
   // Your workout data (replace with actual data you have)
   const workouts = [
-    { date: "2024-12-31", intensity: "4", intensityNote: "Light NYE wake-up routine" },
-    { date: "2025-01-02", intensity: "7", intensityNote: "Intense leg day" },
-    { date: "2025-01-03", intensity: "5", intensityNote: "Moderate upper body" },
-    // Add more workouts as needed
+
   ];
 
   // Toggle calendar visibility

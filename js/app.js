@@ -11,75 +11,152 @@ const firebaseConfig = {
 
 // Initialize Firebase (Firebase 8.x SDK)
 firebase.initializeApp(firebaseConfig);
+
 // Reference to the Firebase Realtime Database
 const validateBtn = document.getElementById('validateBtn');
+const pauseDiv = document.querySelector('#pauseBtn').parentElement; // Parent div of pauseBtn
+const resetDiv = document.querySelector('#resetBtn').parentElement; // Parent div of resetBtn
+const pauseBtn = document.getElementById('pauseBtn');
+const resetBtn = document.getElementById('resetBtn');
 const database = firebase.database();
-let accessWindowActive = false; // Flag to track if access is currently granted
+
+let timerInterval = null;
+let paused = false; // Track if the clock is paused
+let elapsedTime = 0; // Store elapsed time in milliseconds when paused
+let startTime = null; // Store the initial start time
+
+// Function to update the button's display with the elapsed time
+function updateClockDisplay() {
+  const totalElapsed = paused ? elapsedTime : Date.now() - startTime; // Use elapsedTime when paused
+  const hours = Math.floor(totalElapsed / (1000 * 60 * 60));
+  const minutes = Math.floor((totalElapsed % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((totalElapsed % (1000 * 60)) / 1000);
+
+  validateBtn.textContent = `${hours.toString().padStart(2, '0')}:${minutes
+    .toString()
+    .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Function to start the clock
+function startClock() {
+  validateBtn.style.backgroundColor = 'white';
+  validateBtn.style.borderColor = 'black';
+  validateBtn.style.color = 'black';
+
+  if (timerInterval) clearInterval(timerInterval); // Clear any existing timer
+
+  timerInterval = setInterval(() => {
+    if (!paused) {
+      updateClockDisplay();
+    }
+  }, 1000);
+}
+
+// Function to check if the button was clicked in the last three hours
+function checkLastClick() {
+  database
+    .ref('access_logs/start_time')
+    .once('value')
+    .then((snapshot) => {
+      const lastStartTime = snapshot.val();
+      if (lastStartTime) {
+        const currentTime = Date.now();
+        const timeElapsedSinceStart = currentTime - lastStartTime;
+
+        if (timeElapsedSinceStart < 3 * 60 * 60 * 1000) {
+          // If within 3 hours, restore state
+          startTime = lastStartTime; // Set the start time
+          elapsedTime = timeElapsedSinceStart; // Update elapsed time
+          startClock();
+          pauseDiv.style.display = 'block'; // Show the pause button's parent div
+          resetDiv.style.display = 'block'; // Show the reset button's parent div
+          updateClockDisplay();
+        }
+      }
+    })
+    .catch((error) => {
+      console.error('Error retrieving start_time:', error);
+    });
+}
 
 // Listen for the validate button click
 validateBtn.addEventListener('click', () => {
-  // Set the current time as the start time in the database
-  const currentTime = Date.now();
+  if (!startTime) {
+    // If the clock is not already running, initialize it
+    startTime = Date.now();
+    elapsedTime = 0;
 
-  // Set the 'validation_successful' flag and 'start_time' in the 'access_logs' node to the current time
-  database.ref('access_logs').set({
-    validation_successful: true,
-    start_time: currentTime
-  }).then(() => {
-    // Turn the button green as the access is granted for 3 hours
-    validateBtn.style.backgroundColor = 'green';
-    validateBtn.style.borderColor = 'green';
+    database
+      .ref('access_logs/start_time')
+      .set(startTime)
+      .then(() => {
+        startClock();
 
-    // Now retrieve the validation flag and start time from the 'access_logs' node
-    database.ref('access_logs').once('value').then(snapshot => {
-      const data = snapshot.val(); // Get the data from the database
+        // Show the pause and reset buttons' parent divs
+        pauseDiv.style.display = 'block';
+        resetDiv.style.display = 'block';
+      })
+      .catch((error) => {
+        console.error('Error updating start_time:', error);
+      });
+  }
+});
 
-      // Check if the validation was successful
-      if (data && data.validation_successful) {
-        const startTime = data.start_time; // Get the stored timestamp
+// Listen for the pause button click
+pauseBtn.addEventListener('click', () => {
+  if (paused) {
+    // Resume the clock
+    paused = false;
+    startTime = Date.now() - elapsedTime; // Adjust the start time to account for elapsed time
+    pauseBtn.textContent = 'Pause';
+    startClock(); // Restart the clock
+  } else {
+    // Pause the clock
+    paused = true;
+    elapsedTime = Date.now() - startTime; // Store the elapsed time
+    clearInterval(timerInterval); // Stop the clock ticking
+    pauseBtn.textContent = 'Resume';
+  }
+});
 
-        // Format the timestamp to show only hours and minutes
-        const date = new Date(startTime);
-        const formattedTime = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`; // HH:mm format
+// Listen for the reset button click
+resetBtn.addEventListener('click', () => {
+  if (timerInterval) clearInterval(timerInterval);
+  paused = false;
+  elapsedTime = 0;
+  startTime = null;
 
-        // Update the button text with the formatted time
-        validateBtn.textContent = `Access ok - ${formattedTime}`;
-      }
+  validateBtn.style.backgroundColor = 'green'; // Reset button color
+  validateBtn.style.borderColor = 'black'; // Reset button border
+  validateBtn.style.color = ''; // Reset button text color
+  validateBtn.textContent = 'Start clock'; // Reset button text
+
+  // Hide pause and reset buttons' parent divs again
+  pauseDiv.style.display = 'none';
+  resetDiv.style.display = 'none';
+
+  // Clear the start time from the database
+  database
+    .ref('access_logs/start_time')
+    .remove()
+    .catch((error) => {
+      console.error('Error clearing start_time:', error);
     });
+});
 
-    accessWindowActive = true;
+// On page load, check if the button was clicked in the last 3 hours
+document.addEventListener('DOMContentLoaded', () => {
+  // Hide pause and reset buttons by default
+  pauseDiv.style.display = 'none';
+  resetDiv.style.display = 'none';
 
-    // Set a timer to reset the button after 3 hours
-    setTimeout(() => {
-      accessWindowActive = false;
-      validateBtn.style.backgroundColor = '';  // Reset button color
-      validateBtn.textContent = 'Validate';  // Reset button text
-    }, 3 * 60 * 60 * 1000); // 3 hours in milliseconds
-  }).catch((error) => {
-    console.error("Error setting global access: ", error);
-  });
+  // Check the last clock state
+  checkLastClick();
 });
 
 
 
-// Function to periodically check if the database access window is open
-function checkAccessWindow() {
-  // Get the start_time from the database
-  database.ref('global_access/start_time').once('value').then(snapshot => {
-    const startTime = snapshot.val();
-    const currentTime = Date.now();
-    
-    // If the access window has expired, reset the button
-    if (startTime && currentTime > startTime + 3 * 60 * 60 * 1000) {
-      accessWindowActive = false;
-      validateBtn.style.backgroundColor = '';  // Reset button color
-      validateBtn.textContent = 'Validate';  // Reset button text
-    }
-  });
-}
 
-// Periodically check the access window status every minute
-setInterval(checkAccessWindow, 60 * 1000); // Every 60 seconds
 
 
 
@@ -342,16 +419,34 @@ saveWorkoutBtn.addEventListener('click', () => {
     return;
   }
 
+  const workoutDuration = formatDuration(validateBtn.textContent);  // Convert clock time to "h m" format
+  
   const workout = {
     date: getToday(),
     exercises: selectedExercises,
     intensity: document.getElementById('workoutIntensity')?.value || '', // Include intensity
-    intensityNote: currentWorkout.intensityNote || '' // Include intensity note
+    intensityNote: currentWorkout.intensityNote || '', // Include intensity note
+    duration: workoutDuration  // Save the formatted duration
   };
 
   saveWorkout(workout);
   alert('Workout saved successfully!');
 });
+
+// Function to convert clock time (e.g., "01:30") into "1h 30m"
+function formatDuration(timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+
+  let formattedTime = '';
+  if (hours > 0) {
+    formattedTime += `${hours}h `;
+  }
+  if (minutes > 0) {
+    formattedTime += `${minutes}m`;
+  }
+
+  return formattedTime.trim();
+}
 
 // Save workout in Firebase under "workouts" node
 function saveWorkout(workout) {
@@ -366,6 +461,7 @@ function saveWorkout(workout) {
     }
   });
 }
+
 
 const toggleFormBtn = document.getElementById('toggleFormBtn');
 const addExerciseSection = document.getElementById('addExerciseSection');
@@ -417,8 +513,9 @@ function renderSavedWorkouts() {
       const workoutDiv = document.createElement('div');
       workoutDiv.className = 'saved-workout';
 
-      const date = workout.date;
-      const intensity = workout.intensity ? `Intensity: ${workout.intensity}/10<br>` : '';
+      const date = workout.date; 
+      const intensity = workout.intensity ? `Intensity: ${workout.intensity}/10` : '   ';
+      const duration = workout.duration ? `${workout.duration}` : ''; // Keep duration without "Duration:"
       const exercises = workout.exercises.map(e => {
         const setsRepsText = (e.sets || e.reps)
           ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
@@ -426,15 +523,18 @@ function renderSavedWorkouts() {
         const noteText = e.note ? ` ${e.note}` : '';
         return `${e.name}: ${setsRepsText} ${noteText}`;
       }).join('<br>');
-
+      
+      // Concatenate intensity and duration with a space between them
       workoutDiv.innerHTML = `
-        <p><strong>Workout on ${date}</strong><br>${intensity}${exercises}</p>
-      `;
-
+      <p><strong>Workout on ${date}</strong><br>${intensity}${intensity && duration ? ' &nbsp;&nbsp  ' : '   '}${duration}<br>${exercises}</p>
+    `;
+    
+      
       savedWorkoutList.appendChild(workoutDiv);
     });
   });
 }
+
 
 // Helper function to get the current date in YYYY-MM-DD format
 function getToday() {

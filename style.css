@@ -11,3 +11,37 @@
     border-left: 20px solid rgb(49, 160, 66); /* Adds a blue border to the left */
 }
 
+
+#calendar-container table {
+    width: auto;  /* Let the table size adjust based on content */
+    table-layout: fixed; /* Ensures fixed width and height for each cell */
+    border-collapse: collapse; /* Ensures borders collapse into a single line */
+  }
+  
+  #calendar-container td, #calendar-container th {
+    border: 1px solid grey; /* Adds a gray border around each cell */
+    text-align: center;
+    vertical-align: middle; /* Vertically center the content */
+    overflow: hidden; /* Prevent text from overflowing */
+  }
+  
+  /* Set the width and height for each cell (column and row) explicitly */
+  #calendar-container td, #calendar-container th {
+    width: 20px; /* Width in pixels for each column */
+    height: 20px; /* Height in pixels for each row */
+  }
+  
+  /* Style adjustments for the header (week row) */
+  #calendar-container th {
+    background-color: #cecbcb; /* Light background for the header */
+
+  }
+
+  /* Fix the width for the first column (week numbers) */
+#calendar-container th:first-child, 
+#calendar-container td:first-child {
+  width: 70px; /* Fixed width for the week column */
+  white-space: nowrap; /* Prevent wrapping of "Week 1", "Week 10", etc. */
+  background-color: #cecbcb; /* Light background for the header */
+}
+  

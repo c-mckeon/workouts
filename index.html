@@ -9,12 +9,20 @@
 </head>
 <body>
   
-  <div class="header" style="display: flex; align-items: center; margin-left: 20px;">
-    <h1 style="margin-right: 20px;">Workout Tracker</h1> <!-- Adding right margin to create space between the heading and the button -->
-  
-    <div class="col-sm-2" style="margin-left: 100px;">
-      <button type="button" id="validateBtn" class="btn btn-primary">Write access</button>
+  <div class="header" style="display: inline-flex; align-items: center; margin-left: 20px;">
+    <h1 style="margin-right: 20px;  flex-grow: 1;">Workout Tracker</h1> <!-- Adding right margin to create space between the heading and the button -->
+  <div style="display: flex;">
+    <div class="col-sm-2" style="margin-left: 90px;">
+      <button type="button" id="validateBtn" class="btn btn-primary" style="width: 100px;background-color: green; border-color: black;">Start clock</button>
     </div>
+    <div class="col-2 " style="margin-left: 80px; display: none" >
+      <button type="button" id="pauseBtn" class="btn btn-primary">Pause</button>
+    </div>
+    <div class="col-2" style="margin-left: 40px; display: none; " >
+      <button type="button" id="resetBtn" class="btn btn-primary" style="background-color: red; border: none;">reset</button>
+    </div></div>
+
+
   </div>
   
   
@@ -22,7 +30,7 @@
   <!-- Workout Management Section -->
   <div id="workoutManagement">
     
-    <div style="margin-left: 20px;"><h2>Create Workout</h2></div>
+    <div style="margin-left: 20px;"><h2>Start Workout</h2></div>
    
     <form id="workoutForm"> 
       
@@ -127,6 +135,17 @@
 
 
   <hr>
+
+  <div class="row p-3">
+    <div class="col-2" id="showcal">
+      <button class="click">Show calendar</button>
+    </div>
+    
+    <div id="calendar-container" style="padding-top: 20px; display: none;"></div>
+  </div>
+  
+  
+      <hr>
 
   <style>
     /* Add styles for the toggle and fields */

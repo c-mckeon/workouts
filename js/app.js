@@ -514,20 +514,28 @@ function renderSavedWorkouts() {
       workoutDiv.className = 'saved-workout';
 
       const date = workout.date; 
-      const intensity = workout.intensity ? `Intensity: ${workout.intensity}/10` : '   ';
-      const duration = workout.duration ? `${workout.duration}` : ''; // Keep duration without "Duration:"
+      const intensity = workout.intensity ? `Intensity: ${workout.intensity}/10` : '';
+      const intensityNote = workout.intensityNote ? `${workout.intensityNote}` : '';
+      const duration = workout.duration ? `${workout.duration}` : '';
       const exercises = workout.exercises.map(e => {
         const setsRepsText = (e.sets || e.reps)
           ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
           : '';
         const noteText = e.note ? ` ${e.note}` : '';
-        return `${e.name}: ${setsRepsText} ${noteText}`;
+        return `<span style="color: blue;">${e.name}</span>: ${setsRepsText} <span style="color: red;"> ${noteText}</span>`;
       }).join('<br>');
       
+      console.log("Intensity:", intensity);
+console.log("Intensity Note:", intensityNote);
+console.log("Duration:", duration);
+console.log("Exercises:", exercises);
       // Concatenate intensity and duration with a space between them
       workoutDiv.innerHTML = `
-      <p><strong>Workout on ${date}</strong><br>${intensity}${intensity && duration ? ' &nbsp;&nbsp  ' : '   '}${duration}<br>${exercises}</p>
+      <p><strong>Workout on ${date}</strong><br>
+      <span style="color: green;">${intensity}${intensity ? ' &nbsp;&nbsp; ' : ''}${duration} ${intensityNote ? `${intensityNote}<br>` : '<br>' }</span>
+      ${exercises}</p>
     `;
+    
     
       
       savedWorkoutList.appendChild(workoutDiv);

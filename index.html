@@ -159,59 +159,73 @@
     }
   </style>
 
-  <script type="text/javascript">
-    // Initialize Firebase
-    var firebaseConfig = {
-      apiKey: "AIzaSyAvY5Rvn4L0YpYG9YoHJHAQJiuyShB6z48",
-      authDomain: "workouts-725cd.firebaseapp.com",
-      databaseURL: "https://workouts-725cd-default-rtdb.europe-west1.firebasedatabase.app/",
-      projectId: "workouts-725cd",
-      storageBucket: "workouts-725cd.appspot.com",
-      messagingSenderId: "827249841873",
-      appId: "1:827249841873:web:b9906649f774d1be9257f0"
-    };
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const messaging = firebase.messaging();
+<script type="text/javascript">
+  // Initialize Firebase
+  var firebaseConfig = {
+    apiKey: "AIzaSyAvY5Rvn4L0YpYG9YoHJHAQJiuyShB6z48",
+    authDomain: "workouts-725cd.firebaseapp.com",
+    databaseURL: "https://workouts-725cd-default-rtdb.europe-west1.firebasedatabase.app/",
+    projectId: "workouts-725cd",
+    storageBucket: "workouts-725cd.appspot.com",
+    messagingSenderId: "827249841873",
+    appId: "1:827249841873:web:b9906649f774d1be9257f0"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
+  const database = firebase.database();  // Realtime Database initialized here
 
-    // Request Notification Permission and Get Token
-    function requestPermission() {
-      Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-          console.log('Notification permission granted.');
+  // Request Notification Permission and Get Token
+  function requestPermission() {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        console.log('Notification permission granted.');
 
-          // Get FCM token
-          messaging.getToken({ vapidKey: 'BPrwq9gBRl028LojZltHD6kbbLUtHBDbtLU_FEWuy8V1q5l0ad-wP3BUmwQE_9-cSyZewyV5OzU-_CHwSJPisWw' })
-            .then((currentToken) => {
-              if (currentToken) {
-                console.log('FCM Token:', currentToken);
-                // Send the token to your server to save it or use it for notifications
-              } else {
-                console.log('No registration token available. Request permission to get token.');
-              }
-            })
-            .catch((err) => {
-              console.error('Error getting FCM token:', err);
-            });
-        } else {
-          console.error('Notification permission denied');
-        }
+        // Get FCM token
+        messaging.getToken({ vapidKey: 'BPrwq9gBRl028LojZltHD6kbbLUtHBDbtLU_FEWuy8V1q5l0ad-wP3BUmwQE_9-cSyZewyV5OzU-_CHwSJPisWw' })
+          .then((currentToken) => {
+            if (currentToken) {
+              console.log('FCM Token:', currentToken);
+              // Send the token to your server to save it or use it for notifications
+            } else {
+              console.log('No registration token available. Request permission to get token.');
+            }
+          })
+          .catch((err) => {
+            console.error('Error getting FCM token:', err);
+          });
+      } else {
+        console.error('Notification permission denied');
+      }
+    });
+  }
+
+  // Call the function to request permission and get the token
+  requestPermission();
+
+  // Register service worker from the custom URL path
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('https://c-mckeon.github.io/workouts/firebase-messaging-sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch((err) => {
+        console.log('Service Worker registration failed:', err);
       });
-    }
+  }
 
-    // Call the function to request permission and get the token
-    requestPermission();
+  // Example: Reading and Writing to Firebase Realtime Database
+  function writeUserData(userId, name, email) {
+    firebase.database().ref('users/' + userId).set({
+      username: name,
+      email: email
+    });
+  }
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/workouts/firebase-messaging-sw.js')
-        .then((registration) => {
-          console.log('Service Worker registered with scope:', registration.scope);
-        })
-        .catch((err) => {
-          console.log('Service Worker registration failed:', err);
-        });
-    }
-  </script>
+  // Example of writing to the database
+  writeUserData('123', 'John Doe', 'john.doe@example.com');
+</script>
+
 
 </body>
 </html>

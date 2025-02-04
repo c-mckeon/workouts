@@ -1,17 +1,4 @@
-// Firebase configuration (replace with your project details)
-const firebaseConfig = {
-  apiKey: "AIzaSyAvY5Rvn4L0YpYG9YoHJHAQJiuyShB6z48",
-  authDomain: "workouts-725cd.firebaseapp.com",
-  databaseURL: "https://workouts-725cd-default-rtdb.europe-west1.firebasedatabase.app/",
-  projectId: "workouts-725cd",
-  storageBucket: "workouts-725cd.appspot.com",
-  messagingSenderId: "827249841873",
-  appId: "1:827249841873:web:b9906649f774d1be9257f0"
-};
 
-
-// Initialize Firebase (Firebase 8.x SDK)
-firebase.initializeApp(firebaseConfig);
 
 // Reference to the Firebase Realtime Database
 const validateBtn = document.getElementById('validateBtn');

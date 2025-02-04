@@ -1,0 +1,41 @@
+name: Daily Notification
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # Runs daily at 9 AM UTC
+
+jobs:
+  send_notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Firebase Credentials
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+        run: echo "$FIREBASE_CREDENTIALS" > /tmp/firebase-credentials.json
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-cloud-sdk
+
+      - name: Authenticate with Firebase
+        run: |
+          gcloud auth activate-service-account --key-file=/tmp/firebase-credentials.json
+
+      - name: Send Push Notification
+        run: |
+          curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+               -H "Content-Type: application/json" \
+               -d '{
+                 "message": {
+                   "token": "'$DEVICE_FCM_TOKEN'",
+                   "notification": {
+                     "title": "Daily Reminder",
+                     "body": "This is your daily GitHub Action notification!"
+                   }
+                 }
+               }' \
+               https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send
+        env:
+          DEVICE_FCM_TOKEN: ${{ secrets.DEVICE_FCM_TOKEN }}

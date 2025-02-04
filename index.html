@@ -27,6 +27,20 @@
   
   
   <hr>
+
+  <div class="col-sm-2" style="margin-left: 90px; display: none;">
+    <button type="button" id="backupbtn" class="btn btn-primary" style="width: 120px;background-color: green; border-color: black;">backup</button>
+    <div id="passwordPrompt" style="display: none;">
+      <label for="password">Enter Password:</label>
+      <input type="password" id="password" />
+      <button type="button" id="submitPassword">Submit</button>
+      <div id="error" style="color: red;"></div>
+    </div>
+  </div>
+  
+    
+  </div>
+
   <!-- Workout Management Section -->
   <div id="workoutManagement">
     
@@ -92,6 +106,7 @@
           <option value="misc physio">Misc. physio</option>
           <option value="full body">Full Body</option>
           <option value="activity">Activity</option>
+          <option value="Complex/Functional">Complex/Functional</option>
           <!-- Add more categories as needed -->
         </select>
         
@@ -128,10 +143,12 @@
   <!-- Firebase SDK 8.x -->
   <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-auth.js"></script>
 
   <!-- JavaScript -->
   <script src="js/app.js" defer></script>
   <script src="js/analytics.js" defer></script>
+  <script src="js/auth.js" defer></script>
 
 
   <hr>
@@ -146,7 +163,8 @@
   
   
       <hr>
-
+      
+      
   <style>
     /* Add styles for the toggle and fields */
     .sr-fields {
@@ -160,5 +178,42 @@
       display: none;
     }
   </style>
+
+
+
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+      import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging.js";
+
+
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const messaging = getMessaging(app);
+
+      // Get the FCM Token
+      getToken(messaging, { vapidKey: 'your-public-vapid-key' })
+        .then((currentToken) => {
+          if (currentToken) {
+            document.body.innerHTML = `<h3>Your FCM Token:</h3><p>${currentToken}</p>`;
+          } else {
+            document.body.innerHTML = "No token available. Request permission first.";
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching token", err);
+        });
+    </script>
+  </head>
+  <body>
+    <h1>Fetching FCM Token...</h1>
+  </body>
+</html>
+
+
+
+
+
 </body>
 </html>

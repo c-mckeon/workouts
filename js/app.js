@@ -9,6 +9,7 @@ const firebaseConfig = {
   appId: "1:827249841873:web:b9906649f774d1be9257f0"
 };
 
+
 // Initialize Firebase (Firebase 8.x SDK)
 firebase.initializeApp(firebaseConfig);
 
@@ -79,6 +80,9 @@ function checkLastClick() {
     });
 }
 
+
+
+
 // Listen for the validate button click
 validateBtn.addEventListener('click', () => {
   if (!startTime) {
@@ -95,6 +99,8 @@ validateBtn.addEventListener('click', () => {
         // Show the pause and reset buttons' parent divs
         pauseDiv.style.display = 'block';
         resetDiv.style.display = 'block';
+
+
       })
       .catch((error) => {
         console.error('Error updating start_time:', error);
@@ -486,7 +492,6 @@ savedWorkoutList.classList.add('hidden');
 // Add event listener for the click event
 workoutButton.addEventListener('click', () => {
   if (workoutButton.textContent === 'Show workouts') {
-    console.log('Displaying saved workouts...');
     renderSavedWorkouts(); // Populate the workouts
     savedWorkoutList.classList.remove('hidden'); // Make the workouts list visible
     workoutButton.textContent = 'Hide workouts'; // Change button text to "Hide workouts"
@@ -525,10 +530,6 @@ function renderSavedWorkouts() {
         return `<span style="color: blue;">${e.name}</span>: ${setsRepsText} <span style="color: red;"> ${noteText}</span>`;
       }).join('<br>');
       
-      console.log("Intensity:", intensity);
-console.log("Intensity Note:", intensityNote);
-console.log("Duration:", duration);
-console.log("Exercises:", exercises);
       // Concatenate intensity and duration with a space between them
       workoutDiv.innerHTML = `
       <p><strong>Workout on ${date}</strong><br>
@@ -552,6 +553,15 @@ function getToday() {
   const day = today.getDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+
+
+
+
+
+
+
+
 
 // Initialize the app
 loadExercises();

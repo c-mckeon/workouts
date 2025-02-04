@@ -10,21 +10,19 @@
 <body>
   
   <div class="header" style="display: inline-flex; align-items: center; margin-left: 20px;">
-    <h1 style="margin-right: 20px;  flex-grow: 1;">Workout Tracker</h1> <!-- Adding right margin to create space between the heading and the button -->
-  <div style="display: flex;">
-    <div class="col-sm-2" style="margin-left: 90px;">
-      <button type="button" id="validateBtn" class="btn btn-primary" style="width: 120px;background-color: green; border-color: black;">Start clock</button>
+    <h1 style="margin-right: 20px;  flex-grow: 1;">Workout Tracker</h1>
+    <div style="display: flex;">
+      <div class="col-sm-2" style="margin-left: 90px;">
+        <button type="button" id="validateBtn" class="btn btn-primary" style="width: 120px;background-color: green; border-color: black;">Start clock</button>
+      </div>
+      <div class="col-2 " style="margin-left: 80px; display: none" >
+        <button type="button" id="pauseBtn" class="btn btn-primary">Pause</button>
+      </div>
+      <div class="col-2" style="margin-left: 40px; display: none; " >
+        <button type="button" id="resetBtn" class="btn btn-primary" style="background-color: red; border: none;">reset</button>
+      </div>
     </div>
-    <div class="col-2 " style="margin-left: 80px; display: none" >
-      <button type="button" id="pauseBtn" class="btn btn-primary">Pause</button>
-    </div>
-    <div class="col-2" style="margin-left: 40px; display: none; " >
-      <button type="button" id="resetBtn" class="btn btn-primary" style="background-color: red; border: none;">reset</button>
-    </div></div>
-
-
   </div>
-  
   
   <hr>
 
@@ -37,65 +35,51 @@
       <div id="error" style="color: red;"></div>
     </div>
   </div>
-  
-    
-  </div>
+
+  <hr>
 
   <!-- Workout Management Section -->
   <div id="workoutManagement">
-    
     <div style="margin-left: 20px;"><h2>Start Workout</h2></div>
-   
     <form id="workoutForm"> 
-      
       <div class="row p-3">
         <!-- Exercise Label -->
         <div class="col-3">
           <label for="exerciseSelect">Choose Exercise:</label>
         </div>
-      
         <!-- Exercise Select Dropdown -->
         <div class="col-sm-2">
           <select id="exerciseSelect" class="form-control"></select>
         </div>
-      
         <!-- Add Exercise Button -->
         <div class="col-sm-2">
           <button type="button" id="addExerciseBtn" class="btn btn-primary">Add</button>
         </div>
       </div>
-
     </form>
   </div>
 
-
-
-    <div class="row" id="exerciseList">
-      <!-- List of added exercises will appear here -->
+  <div class="row" id="exerciseList">
+    <!-- List of added exercises will appear here -->
+  </div>
+  
+  <div class="row p-3">
+    <div class="col-sm-2">
+      <button  style="width: 135px;" id="saveWorkoutBtn">Save Workout</button>
     </div>
-    
-    <div class="row p-3">
-      <div class="col-sm-2">
-        <button  style="width: 135px;" id="saveWorkoutBtn">Save Workout</button>
-      </div>
-      
-    </div>
-    
-    
-<hr>
+  </div>
+  
+  <hr>
 
   <!-- Add Exercise Section -->
   <div class="row p-3" id="addExerciseSectiondiv" >
-    
     <div class="col-sm-2">
       <button style="width: 135px;" id="toggleFormBtn">Create exercise</button>
     </div>
-    
     <section id="addExerciseSection" style="margin-top: 10px;" class="hidden">
       <form id="addExerciseForm" >
         <label for="newExerciseName">Exercise Name:</label>
         <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
-        
         <label for="exerciseCategory">Choose Category:</label>
         <select id="exerciseCategory">
           <option value="upper body push">Upper body push</option>
@@ -107,28 +91,24 @@
           <option value="full body">Full Body</option>
           <option value="activity">Activity</option>
           <option value="Complex/Functional">Complex/Functional</option>
-          <!-- Add more categories as needed -->
         </select>
-        
         <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
       </form>
     </section>
   </div>
-    <hr>
+  
+  <hr>
 
+  <div class="row p-3">
+    <div class="col-2" id="showchart">
+      <button style="width: 135px;" class="click">Show chart</button>
+    </div>
+    <div id="visuals-container"></div>
+  </div>
 
-<div class="row p-3">
-<div class="col-2" id="showchart">
-  <button style="width: 135px;"class="click" >Show chart</button>
-</div>
+  <hr>
 
-<div id="visuals-container"></div>
-</div>
-
-    <hr>
-
-
-    <div class="row p-3">
+  <div class="row p-3">
     <div class="col-2" id="showworkouts">
       <button style="width: 135px;" class="click">Show workouts</button>
     </div>
@@ -137,19 +117,6 @@
       <!-- Saved workouts will appear here -->
     </div>
   </div>
-    
-    
-
-  <!-- Firebase SDK 8.x -->
-  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-auth.js"></script>
-
-  <!-- JavaScript -->
-  <script src="js/app.js" defer></script>
-  <script src="js/analytics.js" defer></script>
-  <script src="js/auth.js" defer></script>
-
 
   <hr>
 
@@ -157,16 +124,12 @@
     <div class="col-2" id="showcal">
       <button style="width: 135px;" class="click">Show calendar</button>
     </div>
-    
     <div id="calendar-container" style="padding-top: 20px; display: none;"></div>
   </div>
   
-  
-      <hr>
-      
-      
+  <hr>
+
   <style>
-    /* Add styles for the toggle and fields */
     .sr-fields {
       display: none;
       margin-top: 10px;
@@ -179,74 +142,67 @@
     }
   </style>
 
+  <!-- Firebase v8 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-messaging.js"></script>
 
+  <script>
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAvY5Rvn4L0YpYG9YoHJHAQJiuyShB6z48",
+  authDomain: "workouts-725cd.firebaseapp.com",
+  databaseURL: "https://workouts-725cd-default-rtdb.europe-west1.firebasedatabase.app/",
+  projectId: "workouts-725cd",
+  storageBucket: "workouts-725cd.appspot.com",
+  messagingSenderId: "827249841873",
+  appId: "1:827249841873:web:b9906649f774d1be9257f0"
+    };
 
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
 
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-      import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging.js";
+    // Initialize Firebase Messaging
+    const messaging = firebase.messaging();
 
+    // Request Notification Permission and Get Token
+    function requestPermission() {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          console.log('Notification permission granted.');
 
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const messaging = getMessaging(app);
-
-      // Get the FCM Token
-      getToken(messaging, { vapidKey: 'your-public-vapid-key' })
-        .then((currentToken) => {
-          if (currentToken) {
-            document.body.innerHTML = `<h3>Your FCM Token:</h3><p>${currentToken}</p>`;
-          } else {
-            document.body.innerHTML = "No token available. Request permission first.";
-          }
-        })
-        .catch((err) => {
-          console.error("Error fetching token", err);
-        });
-
-
-
-
-
-  // VAPID Public Key
-  const vapidKey = 'BPrwq9gBRl028LojZltHD6kbbLUtHBDbtLU_FEWuy8V1q5l0ad-wP3BUmwQE_9-cSyZewyV5OzU-_CHwSJPisWw';
-
-// Request Notification Permission and Get Token
-function requestPermission() {
-  Notification.requestPermission().then(permission => {
-    if (permission === "granted") {
-      console.log('Notification permission granted.');
-
-      // Get FCM token
-      messaging.getToken({ vapidKey: vapidKey })
-        .then((currentToken) => {
-          if (currentToken) {
-            console.log('FCM Token:', currentToken);
-            // Send the token to your server to save it or use it for notifications
-          } else {
-            console.log('No registration token available. Request permission to get token.');
-          }
-        })
-        .catch((err) => {
-          console.error('Error getting FCM token:', err);
-        });
-    } else {
-      console.error('Notification permission denied');
+          // Get FCM token
+          messaging.getToken({ vapidKey: 'your-public-vapid-key' })
+            .then((currentToken) => {
+              if (currentToken) {
+                console.log('FCM Token:', currentToken);
+                // Send the token to your server to save it or use it for notifications
+              } else {
+                console.log('No registration token available. Request permission to get token.');
+              }
+            })
+            .catch((err) => {
+              console.error('Error getting FCM token:', err);
+            });
+        } else {
+          console.error('Notification permission denied');
+        }
+      });
     }
-  });
-}
 
-// Call the function to request permission and get the token
-requestPermission();
-    </script>
+    // Call the function to request permission and get the token
+    requestPermission();
 
-
-
-
-
-
-
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch((err) => {
+          console.error('Service Worker registration failed:', err);
+        });
+    }
+  </script>
 
 </body>
 </html>

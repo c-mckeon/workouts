@@ -204,12 +204,45 @@
         .catch((err) => {
           console.error("Error fetching token", err);
         });
+
+
+
+
+
+  // VAPID Public Key
+  const vapidKey = 'BPrwq9gBRl028LojZltHD6kbbLUtHBDbtLU_FEWuy8V1q5l0ad-wP3BUmwQE_9-cSyZewyV5OzU-_CHwSJPisWw';
+
+// Request Notification Permission and Get Token
+function requestPermission() {
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      console.log('Notification permission granted.');
+
+      // Get FCM token
+      messaging.getToken({ vapidKey: vapidKey })
+        .then((currentToken) => {
+          if (currentToken) {
+            console.log('FCM Token:', currentToken);
+            // Send the token to your server to save it or use it for notifications
+          } else {
+            console.log('No registration token available. Request permission to get token.');
+          }
+        })
+        .catch((err) => {
+          console.error('Error getting FCM token:', err);
+        });
+    } else {
+      console.error('Notification permission denied');
+    }
+  });
+}
+
+// Call the function to request permission and get the token
+requestPermission();
     </script>
-  </head>
-  <body>
-    <h1>Fetching FCM Token...</h1>
-  </body>
-</html>
+
+
+
 
 
 

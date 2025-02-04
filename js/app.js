@@ -6,7 +6,6 @@ const pauseDiv = document.querySelector('#pauseBtn').parentElement; // Parent di
 const resetDiv = document.querySelector('#resetBtn').parentElement; // Parent div of resetBtn
 const pauseBtn = document.getElementById('pauseBtn');
 const resetBtn = document.getElementById('resetBtn');
-const database = firebase.database();
 
 let timerInterval = null;
 let paused = false; // Track if the clock is paused

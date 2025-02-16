@@ -74,38 +74,60 @@
 
   <!-- Add Exercise Section -->
   <div class="row p-3" id="addExerciseSectiondiv">
-    <div class="col-sm-2">
-      <button style="width: 135px;" id="toggleFormBtn">Create exercise</button>
+    <!-- Add and Edit Section -->
+    <div class="col-12">
+        <button style="width: 135px;" id="toggleFormBtn">Add and Edit</button>
+        <section id="addExerciseSection" style="margin-top: 10px;" class="hidden">
+            <form id="addExerciseForm" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <label for="newExerciseName">Exercise Name:</label>
+                <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
+                
+                <label for="exerciseCategory">Choose Category:</label>
+                      <select id="exerciseCategory">
+                          <option value="upper body push">Upper body push</option>
+                          <option value="upper body pull">Upper body pull</option>
+                          <option value="core">Core</option>
+                          <option value="legs">Legs</option>
+                          <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
+                          <option value="misc physio">Misc. physio</option>
+                          <option value="full body">Full Body</option>
+                          <option value="activity">Activity</option>
+                          <option value="complex functional">Complex Functional</option>
+                      </select>
+                
+                <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
+            </form>
+        </section>
     </div>
+    <!-- Editor Section (Appears Below) -->
+        <div id="editor" >
+            <button style="width: 135px; margin-top: 10px;" id="showeditorbtn" class="hidden">Show Editor</button>
+            <div id="editorsection" style="margin-top: 10px;" class="hidden">
+                <button type="button" onclick="prevNode()">⬅️</button>
+                <button type="button" onclick="nextNode()">➡️</button>
+                <button type="button" onclick="saveChanges()">💾 Make Changes</button>
+                <button type="button" onclick="deleteworkout()">🗑️ Delete workout</button>
+                <form id="editForm"></form>
+                <div id="fields"></div>
+            </div>
+        </div>
+
+</div>
+
     
-    <section id="addExerciseSection" style="margin-top: 10px;" class="hidden">
-      <form id="addExerciseForm">
-        <label for="newExerciseName">Exercise Name:</label>
-        <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
-        
-        <label for="exerciseCategory">Choose Category:</label>
-        <select id="exerciseCategory">
-          <option value="upper body push">Upper body push</option>
-          <option value="upper body pull">Upper body pull</option>
-          <option value="core">Core</option>
-          <option value="legs">Legs</option>
-          <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
-          <option value="misc physio">Misc. physio</option>
-          <option value="full body">Full Body</option>
-          <option value="activity">Activity</option>
-          <option value="Complex/Functional">Complex/Functional</option>
-        </select>
-        
-        <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
-      </form>
-    </section>
-  </div>
-  
   <hr>
 
   <div class="row p-3">
-    <div class="col-2" id="showchart">
-      <button style="width: 135px;" class="click">Show chart</button>
+    <div class="col-5" id="showchart">
+      <button style="width: 135px;" id="showchartbtn" class="click">Show chart</button>
+      <select id="filter-type" onchange="generatevisuals()">
+        <option value="all">All Days</option>
+        <option value="regular">Workout</option>
+        <option value="running">Running</option>
+        <option value="activity">Activity</option>
+      </select>
+      
+      
     </div>
     <div id="visuals-container"></div>
   </div>
@@ -113,8 +135,15 @@
   <hr>
 
   <div class="row p-3">
-    <div class="col-2" id="showworkouts">
+    <div class="col-5" id="showworkouts">
       <button style="width: 135px;" class="click">Show workouts</button>
+      <select id="workout-filter" style="display: none;">
+        <option value="all">All</option>
+        <option value="regular">Workouts</option>
+        <option value="running">Running</option>
+        <option value="activity">Activity</option>
+      </select>
+      
     </div>
     <!-- Saved Workouts Section -->
     <div class="row p-3 hidden" id="savedWorkoutList">
@@ -144,6 +173,26 @@
   </div>
   
   <hr>
+
+  
+
+    <div class="row p-3" id="progressdiv">
+      <!-- Add and Edit Section -->
+      <div class="col-12">
+          <button style="width: 135px;" id="toggleFormBtn">Show progress</button>
+          <section id="Progress section" style="margin-top: 10px;" class="hidden">
+            <button style="width: 135px;" id="toggleFormBtn">Best efforts</button>
+            <div id="besteffortsdiv"></div>
+            <button style="width: 135px;" id="toggleFormBtn">Notes</button>
+            <div id="notesdiv"></div>
+          </section>
+      </div>
+  </div>
+
+
+
+
+
 
   <style>
     /* Add styles for the toggle and fields */
@@ -201,7 +250,7 @@
   }
 
   // Call the function to request permission and get the token
-  requestPermission();
+  // requestPermission();
 
   // Register service worker from the custom URL path
   if ('serviceWorker' in navigator) {
@@ -225,6 +274,12 @@
   // Example of writing to the database
   writeUserData('123', 'John Doe', 'john.doe@example.com');
 </script>
+
+
+
+
+
+
 
 
 </body>

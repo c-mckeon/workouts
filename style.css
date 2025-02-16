@@ -11,6 +11,10 @@
     border-left: 20px solid rgb(49, 160, 66); /* Adds a blue border to the left */
 }
 
+#editor {
+  border-left: 10px solid rgb(214, 211, 59); /* Adds a blue border to the left */
+}
+
 
 #calendar-container table {
     width: auto;  /* Let the table size adjust based on content */
@@ -45,3 +49,7 @@
   background-color: #cecbcb; /* Light background for the header */
 }
   
+
+.hidden {
+  display: none !important; /* Ensures it is hidden before JS runs */
+}

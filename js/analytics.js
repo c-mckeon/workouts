@@ -21,23 +21,31 @@ function getIntensityColor(intensity) {
   if (intensity === 10) return 'rgb(65, 175, 65)';  // Intensity 10: Darkest Green
 }
 
-// Select the button element
-const clickButton = document.querySelector('.click');
+// Select only the button with ID "showchartbtn"
+const clickButton = document.querySelector('#showchartbtn');
+const filterTypeElement = document.querySelector('#filter-type');
 
-// Add event listener for the click event
 clickButton.addEventListener('click', () => {
   const visualsContainer = document.querySelector('#visuals-container');
 
   if (clickButton.textContent === 'Show chart') {
     console.log('Button clicked. Running analytics...');
-    runanalytics(); // Save the draft after adding an exercise
-    generatevisuals(); // Ensure this function is defined elsewhere
-    clickButton.textContent = 'Hide chart'; // Change button text to "Hide"
+    runanalytics();
+    generatevisuals();
+    
+    clickButton.textContent = 'Hide chart';
+    filterTypeElement.style.display = 'inline'; // Show the filter dropdown
   } else {
-    visualsContainer.innerHTML = ''; // Clear the content of visuals container
-    clickButton.textContent = 'Show chart'; // Change button text to "Show chart"
+    visualsContainer.innerHTML = '';
+    clickButton.textContent = 'Show chart';
+    
+    filterTypeElement.style.display = 'none'; // Hide the filter dropdown
   }
 });
+
+// Ensure the filter is hidden by default
+filterTypeElement.style.display = 'none';
+
 
 
 // Function to fetch workout data from Firebase
@@ -208,6 +216,10 @@ groupWorkoutsByDate().then(workoutsByDate => {
 
 
 async function generatevisuals() {
+  // Read the filter value from the UI; default to 'all' if not set
+  const filterElement = document.getElementById('filter-type');
+  const selectedFilter = filterElement ? filterElement.value.toLowerCase() : 'all';
+
   const analyticsRef = firebase.database().ref('/analyticsdb/analytics/exercise-count');
   const sourceRef = firebase.database().ref('/');
 
@@ -217,7 +229,7 @@ async function generatevisuals() {
     const analyticsSnapshot = await analyticsRef.once('value');
     const analyticsData = analyticsSnapshot.val();
 
-    console.log('Analytics Data:', analyticsData); // Log the fetched analytics data
+    console.log('Analytics Data:', analyticsData);
 
     if (!analyticsData || !analyticsData.sortedExercises) {
       console.error('No analytics data available to generate visuals.');
@@ -226,8 +238,7 @@ async function generatevisuals() {
 
     const sortedExercises = analyticsData.sortedExercises; // Sorted exercise names
 
-
-    // Fetch workouts data
+    // Fetch workouts and exercises data
     const sourceSnapshot = await sourceRef.once('value');
     const data = sourceSnapshot.val();
 
@@ -235,72 +246,101 @@ async function generatevisuals() {
       console.error('No workouts data available to generate visuals.');
       return;
     }
-
-    const workouts = Object.values(data.workouts);
+    
+    // Get the activity exercises from the exercises node
+    const activityExercises = data.exercises && data.exercises.activity
+      ? Object.values(data.exercises.activity).map(e => e.name)
+      : [];
+    // Create a sanitized set for easy lookup
+    const activityExercisesSet = new Set(activityExercises.map(name => name.replace(/[.#$/\[\]]/g, '_')));
 
     // Call the helper function to group workouts by date
-    const workoutsByDate = await groupWorkoutsByDate(workouts);
+    const workoutsByDate = await groupWorkoutsByDate();
+    console.log('Workouts Grouped by Date:', workoutsByDate);
 
-    console.log('Workouts Grouped by Date:', workoutsByDate); // Log grouped workouts
+    // Step 1: Filter the dates based on the selected workout type
+    let filteredDates = Object.keys(workoutsByDate);
+    if (selectedFilter !== 'all') {
+      filteredDates = filteredDates.filter(date => {
+        return workoutsByDate[date].type.toLowerCase() === selectedFilter;
+      });
+    }
 
-    // Create HTML table dynamically
+    // Step 2: Identify the exercises that are actually used on these filtered dates
+    const relevantExercises = new Set();
+    filteredDates.forEach((date) => {
+      workoutsByDate[date].workouts.forEach((workout) => {
+        Object.values(workout.exercises || {}).forEach((exercise) => {
+          const sanitizedExercise = exercise.name.replace(/[.#$/\[\]]/g, '_');
+          relevantExercises.add(sanitizedExercise);
+        });
+      });
+    });
+
+    // Step 3: Create the HTML table dynamically using the filtered dates and relevant exercises
     const tableContainer = document.getElementById('visuals-container');
     tableContainer.innerHTML = ''; // Clear previous visuals
 
     const table = document.createElement('table');
     table.className = 'exercise-table';
     table.style.borderCollapse = 'collapse'; // Ensure borders collapse into a single border
+    table.style.marginTop = '10px';
 
     // Create header row (Dates)
     const headerRow = document.createElement('tr');
-    const emptyHeader = document.createElement('th'); // Empty cell for the corner
+    const emptyHeader = document.createElement('th'); // Empty cell at the top left
     headerRow.appendChild(emptyHeader);
 
-    Object.keys(workoutsByDate).forEach((date) => {
+    filteredDates.forEach((date) => {
       const dateHeader = document.createElement('th');
       const formattedDate = formatDate(date);
       dateHeader.textContent = formattedDate;
-      dateHeader.style.border = '1px solid black'; // Add border to each header cell
+      dateHeader.style.border = '1px solid black'; // Add border to header cell
       headerRow.appendChild(dateHeader);
     });
-
     table.appendChild(headerRow);
 
-    // Create rows for each exercise
+    // Step 4: Create rows only for relevant exercises
     sortedExercises.forEach((exercise) => {
+      const sanitizedExercise = exercise.replace(/[.#$/\[\]]/g, '_');
+
+      // Skip exercises not performed on filtered dates
+      if (!relevantExercises.has(sanitizedExercise)) {
+        return;
+      }
+      
+      // If filtering by regular, skip exercises that are part of the activity section
+      if (selectedFilter === 'regular' && activityExercisesSet.has(sanitizedExercise)) {
+        return;
+      }
+
       const row = document.createElement('tr');
 
       // Add row header (exercise name)
       const exerciseCell = document.createElement('th');
       exerciseCell.textContent = exercise;
-      exerciseCell.style.border = '1px solid black'; // Add border to the exercise name cell
+      exerciseCell.style.border = '1px solid black';
       row.appendChild(exerciseCell);
 
       // Add cells for each date
-      Object.keys(workoutsByDate).forEach((date) => {
+      filteredDates.forEach((date) => {
         const cell = document.createElement('td');
-        cell.style.border = '1px solid black'; // Add border to each data cell
+        cell.style.border = '1px solid black';
 
         // Check if the exercise was performed on this date
         const didExercise = workoutsByDate[date].workouts.some((workout) => {
           const exercises = workout.exercises || {};
           return Object.values(exercises).some((e) => {
-            const sanitizedExercise = e.name.replace(/[.#$/\[\]]/g, '_');
-            const sanitizedSortedExercise = exercise.replace(/[.#$/\[\]]/g, '_');
-            return sanitizedExercise === sanitizedSortedExercise;
+            const sanitizedEx = e.name.replace(/[.#$/\[\]]/g, '_');
+            return sanitizedEx === sanitizedExercise;
           });
         });
 
         // Get the intensity color for this date's workouts
         const intensityColor = getIntensityColor(workoutsByDate[date].maxIntensity);
 
-        // Color the cell based on the intensity color if the exercise was performed
-        if (didExercise) {
-          cell.style.backgroundColor = intensityColor; // Apply the intensity color
-        } else {
-          cell.style.backgroundColor = '#f0f0f0'; // Light gray for not performed
-        }
-
+        // Color the cell if the exercise was performed
+        cell.style.backgroundColor = didExercise ? intensityColor : '#f0f0f0';
         row.appendChild(cell);
       });
 
@@ -312,6 +352,9 @@ async function generatevisuals() {
     console.error('Error during generatevisuals:', error);
   }
 }
+
+
+
 
 
 
@@ -357,6 +400,22 @@ function getIntensityColor(intensity) {
   if (intensity === 8) return 'rgb(85, 195, 85)'; // Intensity 8: Dark Green
   if (intensity === 9) return 'rgb(70, 185, 70)'; // Intensity 9: Dark Green
   if (intensity === 10) return 'rgb(65, 175, 65)'; // Intensity 10: Dark Green
+  return 'rgb(255, 255, 255)'; // Default to white
+}
+
+function getactivityColor(intensity) {
+  intensity = intensity || 5; // Default intensity is 5 if not provided
+  intensity = Math.max(1, Math.min(10, intensity)); // Clamp intensity between 1 and 10
+  if (intensity === 1) return 'rgb(240, 230, 239)'; // Intensity 1: Light Green
+  if (intensity === 2) return 'rgb(240, 206, 237)'; // Intensity 2: Light Green
+  if (intensity === 3) return 'rgb(240, 199, 235)'; // Intensity 3: Light Green
+  if (intensity === 4) return 'rgb(240, 185, 236)'; // Intensity 4: Green
+  if (intensity === 5) return 'rgb(240, 171, 225)'; // Intensity 5: Green
+  if (intensity === 6) return 'rgb(240, 150, 219)'; // Intensity 6: Dark Green
+  if (intensity === 7) return 'rgb(236, 140, 211)'; // Intensity 7: Dark Green
+  if (intensity === 8) return 'rgb(230, 130, 205)'; // Intensity 8: Dark Green
+  if (intensity === 9) return 'rgb(220, 120, 196)'; // Intensity 9: Dark Green
+  if (intensity === 10) return 'rgb(210, 110, 190)'; // Intensity 10: Dark Green
   return 'rgb(255, 255, 255)'; // Default to white
 }
 
@@ -463,7 +522,8 @@ topdates.forEach(date => {
         if (workoutData.type === 'Running') {
           color = 'rgb(139, 160, 243)'; // Blue for running workouts
         } else if (workoutData.type === 'Activity') {
-          color = 'rgb(232, 172, 248)'; // Red for activity workouts
+          color = getactivityColor(workoutData.maxIntensity); // Color based on maxIntensity for regular workouts
+
         } else {
           color = getIntensityColor(workoutData.maxIntensity); // Color based on maxIntensity for regular workouts
         }
@@ -513,3 +573,166 @@ document.getElementById("showcal").querySelector("button").addEventListener("cli
     button.textContent = 'Show calendar'; // Change button text back to "Show calendar"
   }
 });
+
+
+
+
+
+
+// 📌 Look inside "/workouts/"
+var basePath = "/workouts/";
+var workoutKeys = [];
+var currentIndex = 0;
+
+//  Load all workout node keys
+function loadWorkouts() {
+    database.ref(basePath).once("value").then(snapshot => {
+        if (snapshot.exists()) {
+            workoutKeys = Object.keys(snapshot.val());
+            console.log("Workout Keys:", workoutKeys); // DEBUG LOG
+
+            if (workoutKeys.length > 0) {
+                currentIndex = 0;
+                displayCurrentNode();
+            } else {
+                document.getElementById("fields").innerHTML = "<p>No workouts found.</p>";
+            }
+        } else {
+            console.log("No data found at", basePath);
+        }
+    }).catch(error => console.error("Error fetching workouts:", error));
+}
+
+// Display current workout node
+function displayCurrentNode() {
+    if (workoutKeys.length === 0) return;
+
+    var workoutID = workoutKeys[currentIndex];
+    var fullPath = basePath + workoutID;
+    
+    console.log("Fetching data from:", fullPath); // DEBUG LOG
+
+    database.ref(fullPath).once("value").then(snapshot => {
+        var data = snapshot.val();
+        console.log("Data received:", data); // DEBUG LOG
+        var fieldsHTML = "";
+
+        // 📌 Workout-Level Fields (Dynamically show all fields except "exercises")
+        if (data) {
+            fieldsHTML += `<h3>Workout Info</h3>`;
+            for (const key in data) {
+                if (key !== "exercises") {
+                    fieldsHTML += `
+                        <label>${key}: </label>
+                        <input type="text" id="workout_${key}" value="${data[key] || ''}"><br>
+                    `;
+                }
+            }
+        }
+
+        // 📌 Exercise-Level Fields
+        if (data && data.exercises) {
+            fieldsHTML += `<h3>Exercises</h3>`;
+            data.exercises.forEach((exercise, index) => {
+                fieldsHTML += `
+                    <label>Name: </label>
+                    <input type="text" id="name_${index}" value="${exercise.name}"><br>
+                    <label>Note: </label>
+                    <input type="text" id="note_${index}" value="${exercise.note}"><br>
+                    <label>Sets: </label>
+                    <input type="number" id="sets_${index}" value="${exercise.sets}"><br>
+                    <label>Reps: </label>
+                    <input type="number" id="reps_${index}" value="${exercise.reps}"><br><br>
+                `;
+            });
+        }
+
+        document.getElementById("fields").innerHTML = fieldsHTML || "<p>No exercises found.</p>";
+    }).catch(error => console.error("Error fetching node data:", error));
+}
+
+// ➡️ Move to next workout
+function nextNode() {
+    if (workoutKeys.length > 0) {
+        currentIndex = (currentIndex + 1) % workoutKeys.length;
+        console.log("Next node index:", currentIndex, "Key:", workoutKeys[currentIndex]); // DEBUG LOG
+        displayCurrentNode();
+    }
+}
+
+// ⬅️ Move to previous workout
+function prevNode() {
+    if (workoutKeys.length > 0) {
+        currentIndex = (currentIndex - 1 + workoutKeys.length) % workoutKeys.length;
+        displayCurrentNode();
+    }
+}
+
+//  Save changes (Workout + Exercises)
+function saveChanges() {
+    var workoutID = workoutKeys[currentIndex];
+    var fullPath = basePath + workoutID;
+
+    // Collect updated workout-level fields
+    var workoutUpdates = {};
+    var workoutInputs = document.querySelectorAll("#fields input[id^='workout_']");
+    workoutInputs.forEach(input => {
+        var field = input.id.replace("workout_", "");
+        workoutUpdates[field] = input.value;
+    });
+
+    // Collect updated exercises
+    var exerciseUpdates = [];
+    var numExercises = (document.querySelectorAll("#fields input[id^='name_']").length);
+    
+    for (var i = 0; i < numExercises; i++) {
+        exerciseUpdates.push({
+            name: document.getElementById(`name_${i}`).value,
+            note: document.getElementById(`note_${i}`).value,
+            sets: parseInt(document.getElementById(`sets_${i}`).value, 10),
+            reps: parseInt(document.getElementById(`reps_${i}`).value, 10)
+        });
+    }
+
+    // Update Firebase
+    database.ref(fullPath).update(workoutUpdates) // Update workout-level fields
+        .then(() => database.ref(fullPath + "/exercises").set(exerciseUpdates)) // Update exercises
+        .then(() => alert("Changes saved!"))
+        .catch(error => alert("Error: " + error.message));
+
+document.getElementById("showeditorbtn").addEventListener("click", function() {
+    displayCurrentNode(); // Refresh
+});
+
+}
+
+function deleteworkout() {
+  // Confirm the deletion action with the user.
+  if (!confirm("Are you sure you want to delete this workout? This action cannot be undone.")) {
+    return;
+  }
+  
+  // Retrieve the current workout ID using your workoutKeys array and currentIndex.
+  var workoutID = workoutKeys[currentIndex];
+  var fullPath = basePath + workoutID; // e.g., '/workouts/' + workoutID
+
+  // Remove the workout from the Firebase database.
+  database.ref(fullPath).remove()
+    .then(() => {
+      alert("Workout deleted successfully!");
+      
+      // Optionally clear the editor fields or update the UI.
+      document.getElementById("editForm").innerHTML = "";
+      document.getElementById("fields").innerHTML = "";
+      
+      // You might also want to update workoutKeys/currentIndex here
+      // or refresh the list of workouts if needed.
+    })
+    .catch(error => {
+      alert("Error deleting workout: " + error.message);
+    });
+}
+
+
+loadWorkouts();
+

@@ -457,16 +457,39 @@ function saveWorkout(workout) {
 
 const toggleFormBtn = document.getElementById('toggleFormBtn');
 const addExerciseSection = document.getElementById('addExerciseSection');
+const showEditorBtn = document.getElementById('showeditorbtn');
+const editorSection = document.getElementById('editorsection');
 
+// Toggle form section and show/hide "Show Editor" button
 toggleFormBtn.addEventListener('click', () => {
-  // Toggle the 'hidden' class
   addExerciseSection.classList.toggle('hidden');
 
-  // Change the button text based on visibility
+  // Change button text based on visibility
   toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
-    ? 'Create exercise'
+    ? 'Add and Edit'
     : 'Hide';
+
+  // Show or hide the "Show Editor" button based on addExerciseSection's state
+  if (addExerciseSection.classList.contains('hidden')) {
+    showEditorBtn.classList.add('hidden'); // Hide when form is hidden
+    editorSection.classList.add('hidden'); // Also hide editor if open
+    showEditorBtn.textContent = "Show Editor"; // Reset button text
+  } else {
+    showEditorBtn.classList.remove('hidden'); // Show when form is visible
+  }
 });
+
+// Toggle editor section visibility
+showEditorBtn.addEventListener('click', () => {
+  editorSection.classList.toggle('hidden');
+
+  // Change button text based on state
+  showEditorBtn.textContent = editorSection.classList.contains('hidden')
+    ? 'Show Editor'
+    : 'Hide Editor';
+});
+
+
 
 // Select the button element for workouts
 const workoutButton = document.querySelector('#showworkouts .click');
@@ -475,22 +498,9 @@ const workoutButton = document.querySelector('#showworkouts .click');
 // Ensure the saved workouts list is hidden initially
 savedWorkoutList.classList.add('hidden');
 
-// Add event listener for the click event
-workoutButton.addEventListener('click', () => {
-  if (workoutButton.textContent === 'Show workouts') {
-    renderSavedWorkouts(); // Populate the workouts
-    savedWorkoutList.classList.remove('hidden'); // Make the workouts list visible
-    workoutButton.textContent = 'Hide workouts'; // Change button text to "Hide workouts"
-  } else {
-    savedWorkoutList.innerHTML = ''; // Clear the workouts content
-    savedWorkoutList.classList.add('hidden'); // Hide the workouts list
-    workoutButton.textContent = 'Show workouts'; // Change button text to "Show workouts"
-  }
-});
 
 
 
-// Render saved workouts from Firebase
 function renderSavedWorkouts() {
   const workoutsRef = database.ref('workouts');
   workoutsRef.once('value', (snapshot) => {
@@ -499,8 +509,35 @@ function renderSavedWorkouts() {
 
     if (!workouts) return;
 
+    // Get the selected filter value from the dropdown
+    const workoutFilterElement = document.getElementById('workout-filter');
+    const selectedWorkoutFilter = workoutFilterElement
+      ? workoutFilterElement.value.toLowerCase()
+      : 'all';
+
     Object.keys(workouts).forEach(workoutId => {
       const workout = workouts[workoutId];
+
+      // Determine the workout type using simple logic:
+      // If there's only one exercise and its name is "Running", mark as 'running'.
+      // If there's only one exercise and it's not running, mark as 'activity'.
+      // Otherwise, it's 'regular'.
+      let workoutType = "regular"; // default
+      if (workout.exercises && workout.exercises.length === 1) {
+        const exerciseName = workout.exercises[0].name.toLowerCase();
+        if (exerciseName === 'running') {
+          workoutType = 'running';
+        } else {
+          workoutType = 'activity';
+        }
+      }
+
+      // If the selected filter is not "all" and does not match this workout's type, skip it.
+      if (selectedWorkoutFilter !== 'all' && workoutType !== selectedWorkoutFilter) {
+        return;
+      }
+
+      // Create a container for this workout.
       const workoutDiv = document.createElement('div');
       workoutDiv.className = 'saved-workout';
 
@@ -513,22 +550,42 @@ function renderSavedWorkouts() {
           ? `${e.sets ? `${e.sets} sets` : ''} ${e.reps ? `x ${e.reps} reps` : ''}`
           : '';
         const noteText = e.note ? ` ${e.note}` : '';
-        return `<span style="color: blue;">${e.name}</span>: ${setsRepsText} <span style="color: red;"> ${noteText}</span>`;
+        return `<span style="color: blue;">${e.name}</span>: ${setsRepsText} <span style="color: red;">${noteText}</span>`;
       }).join('<br>');
       
-      // Concatenate intensity and duration with a space between them
       workoutDiv.innerHTML = `
-      <p><strong>Workout on ${date}</strong><br>
-      <span style="color: green;">${intensity}${intensity ? ' &nbsp;&nbsp; ' : ''}${duration} ${intensityNote ? `${intensityNote}<br>` : '<br>' }</span>
-      ${exercises}</p>
-    `;
-    
-    
+        <p><strong>Workout on ${date}</strong><br>
+          <span style="color: green;">${intensity}${intensity ? ' &nbsp;&nbsp; ' : ''}${duration} ${intensityNote ? `${intensityNote}<br>` : '<br>'}</span>
+          ${exercises}
+        </p>
+      `;
       
       savedWorkoutList.appendChild(workoutDiv);
     });
   });
 }
+
+// Add an event listener to re-render workouts when the filter changes
+document.getElementById('workout-filter').addEventListener('change', () => {
+  renderSavedWorkouts();
+});
+
+// Toggle workouts (and the filter) when the "Show workouts" button is clicked
+workoutButton.addEventListener('click', () => {
+  const workoutFilterElement = document.getElementById('workout-filter');
+  if (workoutButton.textContent === 'Show workouts') {
+    renderSavedWorkouts(); // Populate the workouts
+    savedWorkoutList.classList.remove('hidden'); // Make the workouts list visible
+    workoutButton.textContent = 'Hide workouts'; // Change button text
+    workoutFilterElement.style.display = 'inline'; // Show the filter dropdown
+  } else {
+    savedWorkoutList.innerHTML = ''; // Clear the workouts content
+    savedWorkoutList.classList.add('hidden'); // Hide the workouts list
+    workoutButton.textContent = 'Show workouts'; // Change button text back
+    workoutFilterElement.style.display = 'none'; // Hide the filter dropdown
+  }
+});
+
 
 
 // Helper function to get the current date in YYYY-MM-DD format
@@ -539,6 +596,9 @@ function getToday() {
   const day = today.getDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+
+
 
 
 

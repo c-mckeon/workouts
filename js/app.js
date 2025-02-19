@@ -1,4 +1,6 @@
 
+//-////////////////////////////////////////////////////////////////////////// Clock timer fuctionality
+
 
 // Reference to the Firebase Realtime Database
 const validateBtn = document.getElementById('validateBtn');
@@ -146,14 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
   checkLastClick();
 });
 
+//////////////////////////////////////////////////////////////////////////// Clock timer fuctionality
 
-
-
-
-
-
-
-
+//-////////////////////////////////////////////////////////////////////////// Creating exercises, editing workouts, exercise list
 // DOM Elements
 const exerciseSelect = document.getElementById('exerciseSelect');
 const addExerciseBtn = document.getElementById('addExerciseBtn');
@@ -163,8 +160,11 @@ const savedWorkoutList = document.getElementById('savedWorkoutList');
 const newExerciseName = document.getElementById('newExerciseName');
 const exerciseCategory = document.getElementById('exerciseCategory');
 const saveNewExerciseBtn = document.getElementById('saveNewExerciseBtn');
+const focusCategory = document.getElementById('focusCategory');
+const focusCheckbox = document.getElementById('focusCheckbox');
+const focusContainer = document.getElementById('focusContainer');
 
-const selectedExercises = []; // Array to hold the list of added exercises
+const selectedExercises = [];
 
 // Firebase reference for workout drafts
 const workoutDraftRef = database.ref('workoutDraft');
@@ -172,136 +172,201 @@ const workoutDraftRef = database.ref('workoutDraft');
 // Current workout intensity
 let currentWorkout = { intensity: '', intensityNote: '' };
 
-// Clear any leftover hardcoded dropdown options
+// Toggle focus area selection visibility
+focusCheckbox.addEventListener('change', () => {
+    focusContainer.style.display = focusCheckbox.checked ? 'block' : 'none';
+});
+
+// Clear dropdown options
 function clearDropdown() {
-  exerciseSelect.innerHTML = ''; // Clear all options
+    exerciseSelect.innerHTML = '';
 }
 
-// Add the placeholder option
-const placeholderOption = document.createElement('option');
-placeholderOption.value = ''; // Set the value to empty
-placeholderOption.textContent = 'Choose Exercise'; // Placeholder text
-placeholderOption.disabled = true; // Disable the option
-placeholderOption.selected = true; // Make it selected by default
-exerciseSelect.appendChild(placeholderOption); // Add the placeholder to the dropdown
-
-// Load exercises dynamically and populate the dropdown
+// Function to load exercises dynamically based on checkbox state
 function loadExercises() {
-  const exercisesRef = database.ref('exercises'); // Reference to exercises in Firebase
-  exercisesRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    renderExerciseDropdown(data || {}); // Render dropdown with fetched data
+  const useFocusAreas = document.getElementById("seefocusCheckbox").checked;
+  const exercisesRef = database.ref(useFocusAreas ? 'focusareas' : 'exercises');
+
+  exercisesRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      renderExerciseDropdown(data || {}, useFocusAreas); // Pass data and mode
   });
 }
 
-// Render the exercise dropdown dynamically with a placeholder
-function renderExerciseDropdown(exercises) {
-  clearDropdown(); // Clear existing options
+// Load focus areas dynamically, including an "Add New Focus Area" option
+function loadFocusAreas() {
+  focusCategory.innerHTML = ""; 
 
-  // Add the placeholder option
-  const placeholderOption = document.createElement('option');
-  placeholderOption.value = ''; // Set the value to empty
-  placeholderOption.textContent = 'Select'; // Placeholder text
-  placeholderOption.disabled = true; // Disable the option
-  placeholderOption.selected = true; // Make it selected by default
-  exerciseSelect.appendChild(placeholderOption); // Add the placeholder to the dropdown
+  database.ref("focusareas").once("value", snapshot => {
+      snapshot.forEach(childSnapshot => {
+          const focusArea = childSnapshot.key;
 
-  // Now add the categories and exercises
-  for (const category in exercises) {
-    const optgroup = document.createElement('optgroup');
-    optgroup.label = category.replace('_', ' ').toUpperCase(); // Format category name
+          const option = document.createElement("option");
+          option.value = focusArea;
+          option.textContent = focusArea;
+          focusCategory.appendChild(option);
+      });
 
-    // Add options under this category
-    for (const exerciseId in exercises[category]) {
-      const exercise = exercises[category][exerciseId];
-      const option = document.createElement('option');
-      option.value = exercise.name.toLowerCase().replace(' ', '_'); // Use a lowercase, underscored value
-      option.textContent = exercise.name; // Display the exercise name
-      optgroup.appendChild(option);
-    }
-
-    exerciseSelect.appendChild(optgroup); // Append optgroup to dropdown
-  }
+      // Add "Add New Focus Area" option at the end
+      const addOption = document.createElement("option");
+      addOption.value = "addNew";
+      addOption.textContent = "➕ Add New Focus Area";
+      focusCategory.appendChild(addOption);
+  });
 }
 
-// Save new exercise to Firebase
-saveNewExerciseBtn.addEventListener('click', () => {
-  const name = newExerciseName.value.trim();
-  const category = exerciseCategory.value;
+// Detect when "Add New Focus Area" is selected
+focusCategory.addEventListener("change", function() {
+  if (focusCategory.value === "addNew") {
+      const newFocusArea = prompt("Enter a new focus area:");
 
-  if (!name) {
-    alert('Please enter an exercise name.');
-    return;
+      if (newFocusArea) {
+          const sanitizedFocusArea = newFocusArea.trim();
+
+          // Check if it already exists
+          database.ref(`focusareas/${sanitizedFocusArea}`).once("value", snapshot => {
+              if (snapshot.exists()) {
+                  alert("Focus area already exists!");
+              } else {
+                  // Add to Firebase
+                  database.ref(`focusareas/${sanitizedFocusArea}`).set(true);
+
+                  // Add to dropdown
+                  const newOption = document.createElement("option");
+                  newOption.value = sanitizedFocusArea;
+                  newOption.textContent = sanitizedFocusArea;
+                  focusCategory.insertBefore(newOption, focusCategory.lastElementChild);
+
+                  // Select the newly added option
+                  newOption.selected = true;
+              }
+          });
+      }
+
+      // Reset selection to prevent re-triggering
+      focusCategory.value = "";
   }
+});
 
-  saveExerciseToDatabase(name, category);
-  newExerciseName.value = ''; // Clear the input field
-  alert('Exercise added successfully!');
+// Ensure focus area selection only appears when checkbox is checked
+focusCheckbox.addEventListener('change', () => {
+  focusContainer.style.display = focusCheckbox.checked ? 'block' : 'none';
+});
+
+// Load exercises & focus areas on page load
+window.onload = () => {
+  loadExercises();
+  loadFocusAreas();
+};
+
+
+
+// Save new exercise to Firebase when created
+saveNewExerciseBtn.addEventListener('click', () => {
+    const name = newExerciseName.value.trim();
+    const category = exerciseCategory.value;
+    const selectedFocusAreas = focusCheckbox.checked
+        ? Array.from(focusCategory.selectedOptions).map(opt => opt.value)
+        : [];
+
+    if (!name) {
+        alert('Please enter an exercise name.');
+        return;
+    }
+
+    saveExerciseToDatabase(name, category, selectedFocusAreas);
+    newExerciseName.value = ''; 
+    alert('Exercise added successfully!');
 });
 
 // Function to save an exercise in Firebase
-function saveExerciseToDatabase(name, category) {
-  const exercisesRef = database.ref(`exercises/${category}`);
-  exercisesRef.push({ name });
+function saveExerciseToDatabase(name, category, focusAreas) {
+    const exerciseData = { name };
+    let newExerciseKey = null;
+
+    // Save under main category only if not "None"
+    if (category !== "None") {
+        const exercisesRef = database.ref(`exercises/${category}`);
+        const newExerciseRef = exercisesRef.push();
+        newExerciseKey = newExerciseRef.key;
+        newExerciseRef.set(exerciseData);
+    }
+
+    // Save under focus areas only if checkbox is checked
+    if (newExerciseKey && focusAreas.length > 0) {
+        focusAreas.forEach(focus => {
+            database.ref(`focusareas/${focus}/${newExerciseKey}`).set(exerciseData);
+        });
+    }
 }
 
+// Prevent duplicate exercise addition
 addExerciseBtn.addEventListener('click', () => {
-  const selectedOption = exerciseSelect.options[exerciseSelect.selectedIndex];
-  const exerciseName = selectedOption.text;
+    const selectedOption = exerciseSelect.options[exerciseSelect.selectedIndex];
+    const exerciseId = selectedOption.value;
+    const exerciseName = selectedOption.text;
 
-  // Avoid adding duplicate exercises
-  if (!selectedOption.value || selectedExercises.some(e => e.name === exerciseName)) {
-    alert("Exercise already exists")
-    return;
-  }
+    if (!exerciseId || selectedExercises.some(e => e.id === exerciseId)) {
+        alert("Exercise already exists");
+        return;
+    }
 
-  // Add exercise to the list with an initial "hidden" state for sets/reps
-  selectedExercises.push({ name: exerciseName, sets: 0, reps: 0, note: '', showSR: false });
-  renderExerciseList();
-  saveWorkoutDraft(); // Save the draft after adding an exercise
+    selectedExercises.push({ id: exerciseId, name: exerciseName, sets: 0, reps: 0, note: '', showSR: false });
+
+    renderExerciseList();
+    saveWorkoutDraft();
 });
 
-// Load existing workout draft on page load
-function loadWorkoutDraft() {
-  workoutDraftRef.once('value', (snapshot) => {
-    const draft = snapshot.val();
-    if (draft && draft.exercises) {
-      selectedExercises.push(...draft.exercises); // Populate draft exercises
-      if (draft.intensity) {
-        currentWorkout.intensity = draft.intensity; // Load intensity
+
+// Render exercises in dropdown
+function renderExerciseDropdown(exercises, fromFocusAreas = false) {
+  exerciseSelect.innerHTML = ""; // Clear existing options
+
+  const placeholderOption = document.createElement("option");
+  placeholderOption.value = "";
+  placeholderOption.textContent = "Select Exercise";
+  placeholderOption.disabled = true;
+  placeholderOption.selected = true;
+  exerciseSelect.appendChild(placeholderOption);
+
+  // Loop through the categories in the exercises object
+  for (const category in exercises) {
+      // Skip the category if it's "none" or empty
+      if (category.toLowerCase() === "none" || !category.trim()) {
+          continue;
       }
-      if (draft.intensityNote) {
-        currentWorkout.intensityNote = draft.intensityNote; // Load intensity note
+
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = category.replace("_", " ").toUpperCase();
+
+      // Loop through the exercises within the category
+      for (const exerciseId in exercises[category]) {
+          const exercise = exercises[category][exerciseId];
+
+          // Skip if the exercise has "none" or is empty
+          if (exercise.name.toLowerCase() === "none" || !exercise.name.trim()) {
+              continue;
+          }
+
+          const option = document.createElement("option");
+          option.value = exerciseId;
+          option.textContent = exercise.name;
+          optgroup.appendChild(option);
       }
-      renderExerciseList(); // Render the draft
-    }
-  });
+
+      exerciseSelect.appendChild(optgroup);
+  }
 }
 
-// Save the workout draft to Firebase
-function saveWorkoutDraft() {
-  const draft = {
-    exercises: selectedExercises,
-    intensity: document.getElementById('workoutIntensity')?.value || '', // Save intensity
-    intensityNote: currentWorkout.intensityNote || '', // Save intensity note
-    date: getToday()
-  };
 
-  workoutDraftRef.set(draft, (error) => {
-    if (error) {
-      console.error('Error saving workout draft:', error);
-    }
-  });
-}
+// Listen for focus area checkbox toggle and reload exercises
+document.getElementById("seefocusCheckbox").addEventListener("change", loadExercises);
 
-// Clear the workout draft from Firebase (after saving the workout)
-function clearWorkoutDraft() {
-  workoutDraftRef.remove((error) => {
-    if (error) {
-      console.error('Error clearing workout draft:', error);
-    }
-  });
-}
+
+//////////////////////////////////////////////////////////////////////// Creating exercises, editing past workouts 
+
+//-////////////////////////////////////////////////////////////////////// Workout creation and saving
+
 
 // Render the exercise list dynamically, including intensity note field
 function renderExerciseList() {
@@ -314,20 +379,20 @@ function renderExerciseList() {
 
     exerciseDiv.innerHTML = `
     <div class="row p-1">
-      <div class="col-3">${exercise.name}</div>
-      <div class="col-1">
+      <div class="col-12 col-md-3">${exercise.name}</div>
+      <div class="col-4 col-md-1">
         <input type="number" class="form-control sets-input" placeholder="Sets" data-index="${index}" 
           value="${exercise.sets !== 0 ? exercise.sets : ''}">
       </div>
-      <div class="col-1">
+      <div class="col-4 col-md-1">
         <input type="number" class="form-control reps-input" placeholder="Reps" data-index="${index}" 
           value="${exercise.reps !== 0 ? exercise.reps : ''}">
       </div>
-      <div class="col-2">
+      <div class="col-8 col-md-2">
         <input type="text" class="form-control note-input" placeholder="Add a note" data-index="${index}" 
           value="${exercise.note || ''}">
       </div>
-      <div class="col-1">
+      <div class="col-2 col-md-1">
         <button class="btn btn-danger remove-btn" data-index="${index}">X</button>
       </div>
     </div>
@@ -342,11 +407,11 @@ function renderExerciseList() {
 
   intensityDiv.innerHTML = `
   <div class="row p-1">
-  <div class="col-3">Workout Intensity</div>
-  <div class="col-2">
+  <div class="col-8 col-md-3">Workout Intensity</div>
+  <div class="col-8 col-md-2">
     <input type="number" id="workoutIntensity" class="form-control" placeholder="1-10" min="1" max="10" value="${currentWorkout.intensity || ''}">
   </div>
-  <div class="col-2">
+  <div class="col-8 col-md-2">
     <input type="text" id="workoutIntensityNote" class="form-control" placeholder="Misc. notes" value="${currentWorkout.intensityNote || ''}">
   </div>
   <div class="col-1"></div></div> <!-- Empty column to balance the grid -->
@@ -356,53 +421,6 @@ function renderExerciseList() {
   addDraftListeners(); // Add listeners to save draft on changes
 }
 
-// Add listeners for input changes to save the draft
-function addDraftListeners() {
-  document.querySelectorAll('.sets-input').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const index = e.target.dataset.index;
-      selectedExercises[index].sets = parseInt(e.target.value) || 0;
-      saveWorkoutDraft(); // Save the draft after modifying sets
-    });
-  });
-
-  document.querySelectorAll('.reps-input').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const index = e.target.dataset.index;
-      selectedExercises[index].reps = parseInt(e.target.value) || 0;
-      saveWorkoutDraft(); // Save the draft after modifying reps
-    });
-  });
-
-  document.querySelectorAll('.note-input').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const index = e.target.dataset.index;
-      selectedExercises[index].note = e.target.value.trim();
-      saveWorkoutDraft(); // Save the draft after modifying notes
-    });
-  });
-
-  document.querySelectorAll('.remove-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const index = e.target.dataset.index;
-      selectedExercises.splice(index, 1); // Remove exercise
-      renderExerciseList();
-      saveWorkoutDraft(); // Save the draft after removing an exercise
-    });
-  });
-
-  // Intensity input listener
-  document.getElementById('workoutIntensity').addEventListener('input', (e) => {
-    currentWorkout.intensity = e.target.value.trim();
-    saveWorkoutDraft(); // Save the draft after modifying intensity
-  });
-
-  // Intensity note input listener
-  document.getElementById('workoutIntensityNote').addEventListener('input', (e) => {
-    currentWorkout.intensityNote = e.target.value.trim();
-    saveWorkoutDraft(); // Save the draft after modifying intensity note
-  });
-}
 
 // Save workout to Firebase
 saveWorkoutBtn.addEventListener('click', () => {
@@ -454,6 +472,106 @@ function saveWorkout(workout) {
   });
 }
 
+//////////////////////////////////////////////////////////////////////// Creating and saving workouts
+
+
+//-////////////////////////////////////////////////////////////////////// Workout drafts and draft keeping
+
+// Load existing workout draft on page load
+function loadWorkoutDraft() {
+  workoutDraftRef.once('value', (snapshot) => {
+    const draft = snapshot.val();
+    if (draft && draft.exercises) {
+      selectedExercises.push(...draft.exercises); // Populate draft exercises
+      if (draft.intensity) {
+        currentWorkout.intensity = draft.intensity; // Load intensity
+      }
+      if (draft.intensityNote) {
+        currentWorkout.intensityNote = draft.intensityNote; // Load intensity note
+      }
+      renderExerciseList(); // Render the draft
+    }
+  });
+}
+
+// Save the workout draft to Firebase
+function saveWorkoutDraft() {
+  const draft = {
+    exercises: selectedExercises,
+    intensity: document.getElementById('workoutIntensity')?.value || '', // Save intensity
+    intensityNote: currentWorkout.intensityNote || '', // Save intensity note
+    date: getToday()
+  };
+
+  workoutDraftRef.set(draft, (error) => {
+    if (error) {
+      console.error('Error saving workout draft:', error);
+    }
+  });
+}
+
+// Clear the workout draft from Firebase (after saving the workout)
+function clearWorkoutDraft() {
+  workoutDraftRef.remove((error) => {
+    if (error) {
+      console.error('Error clearing workout draft:', error);
+    }
+  });
+}
+
+
+// Add listeners for input changes to save the draft
+function addDraftListeners() {
+  document.querySelectorAll('.sets-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = e.target.dataset.index;
+      selectedExercises[index].sets = parseInt(e.target.value) || 0;
+      saveWorkoutDraft(); // Save the draft after modifying sets
+    });
+  });
+
+  document.querySelectorAll('.reps-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = e.target.dataset.index;
+      selectedExercises[index].reps = parseInt(e.target.value) || 0;
+      saveWorkoutDraft(); // Save the draft after modifying reps
+    });
+  });
+
+  document.querySelectorAll('.note-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = e.target.dataset.index;
+      selectedExercises[index].note = e.target.value.trim();
+      saveWorkoutDraft(); // Save the draft after modifying notes
+    });
+  });
+
+  document.querySelectorAll('.remove-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const index = e.target.dataset.index;
+      selectedExercises.splice(index, 1); // Remove exercise
+      renderExerciseList();
+      saveWorkoutDraft(); // Save the draft after removing an exercise
+    });
+  });
+
+  // Intensity input listener
+  document.getElementById('workoutIntensity').addEventListener('input', (e) => {
+    currentWorkout.intensity = e.target.value.trim();
+    saveWorkoutDraft(); // Save the draft after modifying intensity
+  });
+
+  // Intensity note input listener
+  document.getElementById('workoutIntensityNote').addEventListener('input', (e) => {
+    currentWorkout.intensityNote = e.target.value.trim();
+    saveWorkoutDraft(); // Save the draft after modifying intensity note
+  });
+}
+
+//////////////////////////////////////////////////////////////////////// Workout drafts and draft keeping
+
+
+//-////////////////////////////////////////////////////////////////////// Add and edit section functionality
 
 const toggleFormBtn = document.getElementById('toggleFormBtn');
 const addExerciseSection = document.getElementById('addExerciseSection');
@@ -490,6 +608,9 @@ showEditorBtn.addEventListener('click', () => {
 });
 
 
+//////////////////////////////////////////////////////////////////////// Add and edit section functionality
+
+//-////////////////////////////////////////////////////////////////////// Past workouts section
 
 // Select the button element for workouts
 const workoutButton = document.querySelector('#showworkouts .click');
@@ -588,6 +709,10 @@ workoutButton.addEventListener('click', () => {
 
 
 
+//////////////////////////////////////////////////////////////////////// Past workouts section
+
+//-////////////////////////////////////////////////////////////////////// misc.
+
 // Helper function to get the current date in YYYY-MM-DD format
 function getToday() {
   const today = new Date();
@@ -596,16 +721,6 @@ function getToday() {
   const day = today.getDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-
-
-
-
-
-
-
-
-
-
 
 
 

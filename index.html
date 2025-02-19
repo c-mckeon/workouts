@@ -53,9 +53,18 @@
         </div>
       
         <!-- Add Exercise Button -->
-        <div class="col-sm-2">
+        <div class="col-sm-1">
           <button type="button" id="addExerciseBtn" class="btn btn-primary">Add</button>
         </div>
+
+        <div class="col-sm-2">
+          <div class="form-check">
+            <input type="checkbox" id="seefocusCheckbox" class="form-check-input">
+            <label class="form-check-label" for="seefocusCheckbox">Focus Areas:</label>
+          </div>
+        </div>
+        
+
       </div>
     </form>
   </div>
@@ -82,18 +91,40 @@
                 <label for="newExerciseName">Exercise Name:</label>
                 <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
                 
-                <label for="exerciseCategory">Choose Category:</label>
-                      <select id="exerciseCategory">
-                          <option value="upper body push">Upper body push</option>
-                          <option value="upper body pull">Upper body pull</option>
-                          <option value="core">Core</option>
-                          <option value="legs">Legs</option>
-                          <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
-                          <option value="misc physio">Misc. physio</option>
-                          <option value="full body">Full Body</option>
-                          <option value="activity">Activity</option>
-                          <option value="complex functional">Complex Functional</option>
-                      </select>
+                <div class="row align-items-center">
+                  <div class="col-auto">
+                    <label for="exerciseCategory">Choose Category:</label>
+                  </div>
+                  <div class="col">
+                    <select id="exerciseCategory" multiple class="form-control">
+                      <option value="upper body push">Upper body push</option>
+                      <option value="upper body pull">Upper body pull</option>
+                      <option value="core">Core</option>
+                      <option value="legs">Legs</option>
+                      <option value="groin, hips, glutes">Groin, Hips, Glutes</option>
+                      <option value="misc physio">Misc. physio</option>
+                      <option value="full body">Full Body</option>
+                      <option value="activity">Activity</option>
+                      <option value="complex functional">Complex Functional</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="row align-items-center">
+                  <div class="col-auto">
+                    <label>
+                      <input type="checkbox" id="focusCheckbox"> Focus Areas:
+                    </label>
+                  </div>
+                  <!-- Preserve the focus container here -->
+                  <div class="col" id="focusContainer" style="display: none;">
+                    <select id="focusCategory" multiple class="form-control">
+                      <option value="addNew">Add New</option>
+                    </select>
+                  </div>
+                </div>
+                
                 
                 <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
             </form>
@@ -279,8 +310,6 @@
   // Example of writing to the database
   writeUserData('123', 'John Doe', 'john.doe@example.com');
 </script>
-
-
 
 
 

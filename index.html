@@ -53,16 +53,16 @@
         </div>
       
         <!-- Add Exercise Button -->
-        <div class="col-sm-1">
+        <div class="col-sm-5">
           <button type="button" id="addExerciseBtn" class="btn btn-primary">Add</button>
-        </div>
+        
 
-        <div class="col-sm-2">
-          <div class="form-check">
+        <div style="margin-left: 20px; display: inline-flex;" >
+          <div class="form-check" >
             <input type="checkbox" id="seefocusCheckbox" class="form-check-input">
             <label class="form-check-label" for="seefocusCheckbox">Focus Areas:</label>
           </div>
-        </div>
+        </div></div>
         
 
       </div>
@@ -96,7 +96,7 @@
                     <label for="exerciseCategory">Choose Category:</label>
                   </div>
                   <div class="col">
-                    <select id="exerciseCategory" multiple class="form-control">
+                    <select id="exerciseCategory" class="form-control">
                       <option value="upper body push">Upper body push</option>
                       <option value="upper body pull">Upper body pull</option>
                       <option value="core">Core</option>
@@ -128,23 +128,44 @@
                 
                 <button type="button" id="saveNewExerciseBtn">Add Exercise</button>
             </form>
-        </section>
+            <button style="width: 160px; margin-top: 10px;" id="showeditorbtn" >Workout Editor</button>
+            <button style="width: 160px; margin-top: 10px;" id="showexoeditorbtn" >Exercise Editor</button>
+        </section> 
     </div>
     <!-- Editor Section (Appears Below) -->
+
         <div id="workouteditor" >
-            <button style="width: 135px; margin-top: 10px;" id="showeditorbtn" class="hidden">Show Editor</button>
             <div id="editorsection" style="margin-top: 10px;" class="hidden">
                 <button type="button" onclick="prevNode()">⬅️</button>
                 <button type="button" onclick="nextNode()">➡️</button>
-                <button type="button" onclick="saveChanges()">💾 Make Changes</button>
+                <button type="button" onclick="addpastexercise()">➕ Add exercise</button>
+                <button type="button" onclick="saveChanges()">💾 Save changes</button>
                 <button type="button" onclick="deleteworkout()">🗑️ Delete workout</button>
                 <form id="editForm"></form>
-                <div id="fields"></div>
+                <div style="margin-top: 10px; border-left: 10px solid rgb(255, 213, 0); padding-left: 10px;" id="fields"></div>
             </div>
         </div>
-        <div id="exerciseeditor" >
-          <button style="width: 135px; margin-top: 10px;" id="showeditorbtn" class="hidden">Exercise Editor</button>
-          <div id="exerciseeditorsection" style="margin-top: 10px;" class="hidden">
+        <div style="margin-top: 10px;" class="hidden" id="exerciseeditor" >
+              <!-- Optionally, add a selector for the type if needed -->
+
+
+              <!-- Your exercise management section -->
+              <div id="exoeditorsection">
+                <button type="button" onclick="prevexo()">⬅️</button>
+                <button type="button" onclick="nextexo()">➡️</button>
+                <button type="button" onclick="saveexo()">💾 Save changes</button>
+                <button type="button" onclick="deleteexo()">🗑️ Delete exercise</button><br>
+              <div style="margin-top: 10px; border-left: 10px solid rgb(255, 157, 0); padding-left: 10px;">
+                <select style="margin-top: 10px;" id="typeSelector">
+                  <option value="exercises">Exercises</option>
+                  <option value="focusareas">Focus Areas</option>
+                </select>
+  
+                <!-- Dropdown for selecting a category -->
+                <select id="categorySelector"></select>
+                <div id="exerciseeditorsection" style="margin-top: 10px;"></div>
+              </div></div>
+
           </div>
       </div>
 
@@ -212,7 +233,7 @@
 
   
 
-    <div class="row p-3" id="progressdiv">
+    <div class="row p-3" id="progressdiv" class="hidden">
       <!-- Add and Edit Section -->
       <div class="col-12">
           <button style="width: 135px;" id="toggleFormBtn">Show progress</button>
@@ -260,55 +281,6 @@
   const messaging = firebase.messaging();
   const database = firebase.database();  // Realtime Database initialized here
 
-  // Request Notification Permission and Get Token
-  function requestPermission() {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        console.log('Notification permission granted.');
-
-        // Get FCM token
-        messaging.getToken({ vapidKey: 'BPrwq9gBRl028LojZltHD6kbbLUtHBDbtLU_FEWuy8V1q5l0ad-wP3BUmwQE_9-cSyZewyV5OzU-_CHwSJPisWw' })
-          .then((currentToken) => {
-            if (currentToken) {
-              console.log('FCM Token:', currentToken);
-              // Send the token to your server to save it or use it for notifications
-            } else {
-              console.log('No registration token available. Request permission to get token.');
-            }
-          })
-          .catch((err) => {
-            console.error('Error getting FCM token:', err);
-          });
-      } else {
-        console.error('Notification permission denied');
-      }
-    });
-  }
-
-  // Call the function to request permission and get the token
-  // requestPermission();
-
-  // Register service worker from the custom URL path
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('https://c-mckeon.github.io/workouts/firebase-messaging-sw.js')
-      .then((registration) => {
-        console.log('Service Worker registered with scope:', registration.scope);
-      })
-      .catch((err) => {
-        console.log('Service Worker registration failed:', err);
-      });
-  }
-
-  // Example: Reading and Writing to Firebase Realtime Database
-  function writeUserData(userId, name, email) {
-    firebase.database().ref('users/' + userId).set({
-      username: name,
-      email: email
-    });
-  }
-
-  // Example of writing to the database
-  writeUserData('123', 'John Doe', 'john.doe@example.com');
 </script>
 
 

@@ -318,10 +318,22 @@ addExerciseBtn.addEventListener('click', () => {
 });
 
 
-// Render exercises in dropdown
 function renderExerciseDropdown(exercises, fromFocusAreas = false) {
-  exerciseSelect.innerHTML = ""; // Clear existing options
+  console.log("renderExerciseDropdown() called");
 
+  // Get the dropdown element
+  const exerciseSelect = document.getElementById("exerciseSelect");
+
+  // Check if the dropdown exists in the HTML
+  if (!exerciseSelect) {
+      console.error("❌ ERROR: exerciseSelect element not found!");
+      return;
+  }
+
+  // Clear existing options
+  exerciseSelect.innerHTML = "";
+
+  // Add default placeholder option
   const placeholderOption = document.createElement("option");
   placeholderOption.value = "";
   placeholderOption.textContent = "Select Exercise";
@@ -329,41 +341,437 @@ function renderExerciseDropdown(exercises, fromFocusAreas = false) {
   placeholderOption.selected = true;
   exerciseSelect.appendChild(placeholderOption);
 
-  // Loop through the categories in the exercises object
+  // Check if exercises exist and are valid
+  if (!exercises || typeof exercises !== "object" || Object.keys(exercises).length === 0) {
+      console.warn("⚠️ WARNING: No exercises found! Dropdown will be empty.");
+      return;
+  }
+
+  // Loop through categories in the exercises object
   for (const category in exercises) {
-      // Skip the category if it's "none" or empty
-      if (category.toLowerCase() === "none" || !category.trim()) {
+      if (!category || typeof category !== "string" || category.toLowerCase() === "none" || !category.trim()) {
+          console.warn("⚠️ Skipping empty or 'none' category:", category);
           continue;
       }
 
+
+      // Create an optgroup for each category
       const optgroup = document.createElement("optgroup");
       optgroup.label = category.replace("_", " ").toUpperCase();
 
-      // Loop through the exercises within the category
+      // Loop through exercises within the category
       for (const exerciseId in exercises[category]) {
           const exercise = exercises[category][exerciseId];
 
-          // Skip if the exercise has "none" or is empty
-          if (exercise.name.toLowerCase() === "none" || !exercise.name.trim()) {
+          // Validate exercise object and name
+          if (!exercise || typeof exercise !== "object" || !exercise.name || typeof exercise.name !== "string" || exercise.name.toLowerCase() === "none" || !exercise.name.trim()) {
+              console.warn("⚠️ Skipping invalid exercise:", exercise);
               continue;
           }
 
+          // Create an option for each exercise
           const option = document.createElement("option");
           option.value = exerciseId;
           option.textContent = exercise.name;
           optgroup.appendChild(option);
       }
 
+      // Append category group to the select dropdown
       exerciseSelect.appendChild(optgroup);
   }
+
+  console.log("✅ Dropdown updated successfully.");
 }
+
 
 
 // Listen for focus area checkbox toggle and reload exercises
 document.getElementById("seefocusCheckbox").addEventListener("change", loadExercises);
 
 
+
+////////// Here is functionality for viewing and editing past workout fields
+
+// 📌 Look inside "/workouts/"
+var basePath = "/workouts/";
+var workoutKeys = [];
+var currentIndex = 0;
+
+//  Load all workout node keys
+function loadWorkouts() {
+    database.ref(basePath).once("value").then(snapshot => {
+        if (snapshot.exists()) {
+            workoutKeys = Object.keys(snapshot.val());
+            console.log("Workout Keys:", workoutKeys); // DEBUG LOG
+
+            if (workoutKeys.length > 0) {
+                currentIndex = 0;
+                displayCurrentNode();
+            } else {
+                document.getElementById("fields").innerHTML = "<p>No workouts found.</p>";
+            }
+        } else {
+            console.log("No data found at", basePath);
+        }
+    }).catch(error => console.error("Error fetching workouts:", error));
+}
+
+// Display current workout node
+function displayCurrentNode() {
+    if (workoutKeys.length === 0) return;
+
+    var workoutID = workoutKeys[currentIndex];
+    var fullPath = basePath + workoutID;
+    
+    console.log("Fetching data from:", fullPath); // DEBUG LOG
+
+    database.ref(fullPath).once("value").then(snapshot => {
+        var data = snapshot.val();
+        console.log("Data received:", data); // DEBUG LOG
+        var fieldsHTML = "";
+
+        // 📌 Workout-Level Fields (Dynamically show all fields except "exercises")
+        if (data) {
+          fieldsHTML += `<h3>Workout Info</h3>`;
+          // Define the workout fields with custom labels
+          const workoutFields = {
+              date: "Date",
+              duration: "Duration",
+              intensity: "Intensity",
+              intensityNote: "Note"
+          };
+      
+          for (const key in workoutFields) {
+              fieldsHTML += `
+                  <label style="display:inline-block; width:65px">${workoutFields[key]}: </label>
+                  <input type="text" id="workout_${key}" value="${data[key] || ''}"><br>
+              `;
+          }
+      }
+      
+
+        // 📌 Exercise-Level Fields
+        if (data && data.exercises) {
+            fieldsHTML += `<br><h3>Exercises</h3>`;
+            data.exercises.forEach((exercise, index) => {
+                fieldsHTML += `
+                    <label style="display:inline-block; width:50px";>Name: </label>
+                    <input type="text" id="name_${index}" value="${exercise.name}"><button class="btn btn-danger btn-sm" style="margin-left: 10px;" onclick="deleteExercise(${index})">X</button><br>
+
+                    <label style="display:inline-block; width:50px";>Note: </label>
+                    <input type="text" id="note_${index}" value="${exercise.note}"><br>
+                    <label style="display:inline-block; width:50px";>Sets: </label>
+                    <input type="number" id="sets_${index}" value="${exercise.sets}"><br>
+                    <label style="display:inline-block; width:50px";>Reps: </label>
+                    <input type="number" id="reps_${index}" value="${exercise.reps}"><br><br>
+
+                `;
+            });
+        }
+
+        document.getElementById("fields").innerHTML = fieldsHTML || "<p>No exercises found.</p>";
+    }).catch(error => console.error("Error fetching node data:", error));
+}
+
+// ➡️ Move to next workout
+function nextNode() {
+    if (workoutKeys.length > 0) {
+        currentIndex = (currentIndex + 1) % workoutKeys.length;
+        console.log("Next node index:", currentIndex, "Key:", workoutKeys[currentIndex]); // DEBUG LOG
+        displayCurrentNode();
+    }
+}
+
+// ⬅️ Move to previous workout
+function prevNode() {
+    if (workoutKeys.length > 0) {
+        currentIndex = (currentIndex - 1 + workoutKeys.length) % workoutKeys.length;
+        displayCurrentNode();
+    }
+}
+
+function addpastexercise() {
+  // Count existing exercise fields by counting inputs with IDs starting with "name_"
+  var index = document.querySelectorAll("#fields input[id^='name_']").length;
+  
+  // Build the new exercise fields HTML with aligned fields and default 0 for sets/reps
+  var newExerciseHTML = `
+      <div class="exercise-entry" style="margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+          <div>
+              <label style="display:inline-block; width:50px;">Name:</label>
+              <input type="text" id="name_${index}" value=""><button class="btn btn-danger btn-sm" style="margin-left: 10px;" onclick="deleteExercise(${index})">X</button><br>
+
+              <label style="display:inline-block; width:50px;">Note:</label>
+              <input type="text" id="note_${index}" value="">
+<br>
+              <label style="display:inline-block; width:50px;">Sets:</label>
+              <input type="number" id="sets_${index}" value="0">
+<br>
+              <label style="display:inline-block; width:50px;">Reps:</label>
+              <input type="number" id="reps_${index}" value="0">
+          </div>
+      </div>
+  `;
+  
+  // Append the new exercise block to the editor form
+  document.getElementById("fields").insertAdjacentHTML("beforeend", newExerciseHTML);
+}
+
+
+
+//  Save changes (Workout + Exercises)
+function saveChanges() {
+    var workoutID = workoutKeys[currentIndex];
+    var fullPath = basePath + workoutID;
+
+    // Collect updated workout-level fields
+    var workoutUpdates = {};
+    var workoutInputs = document.querySelectorAll("#fields input[id^='workout_']");
+    workoutInputs.forEach(input => {
+        var field = input.id.replace("workout_", "");
+        workoutUpdates[field] = input.value;
+    });
+
+    // Collect updated exercises
+    var exerciseUpdates = [];
+    var numExercises = (document.querySelectorAll("#fields input[id^='name_']").length);
+    
+    for (var i = 0; i < numExercises; i++) {
+        exerciseUpdates.push({
+            name: document.getElementById(`name_${i}`).value,
+            note: document.getElementById(`note_${i}`).value,
+            sets: parseInt(document.getElementById(`sets_${i}`).value, 10),
+            reps: parseInt(document.getElementById(`reps_${i}`).value, 10)
+        });
+    }
+
+    // Update Firebase
+    database.ref(fullPath).update(workoutUpdates) // Update workout-level fields
+        .then(() => database.ref(fullPath + "/exercises").set(exerciseUpdates)) // Update exercises
+        .then(() => alert("Changes saved!"))
+        .catch(error => alert("Error: " + error.message));
+
+document.getElementById("showeditorbtn").addEventListener("click", function() {
+    displayCurrentNode(); // Refresh
+});
+}
+
+function deleteExercise(index) {
+  if (!confirm("Are you sure you want to delete this exercise?")) return;
+
+  var workoutID = workoutKeys[currentIndex];
+  var fullPath = basePath + workoutID + "/exercises";
+
+  database.ref(fullPath).once("value").then(snapshot => {
+      var exercises = snapshot.val();
+      if (!exercises || index >= exercises.length) return;
+
+      // Remove the exercise from the array
+      exercises.splice(index, 1);
+
+      // Update Firebase with the new array (without the deleted exercise)
+      return database.ref(fullPath).set(exercises);
+  }).then(() => {
+      displayCurrentNode(); // Refresh UI
+  }).catch(error => {
+      alert("Error deleting exercise: " + error.message);
+  });
+}
+
+
+function deleteworkout() {
+  // Confirm the deletion action with the user.
+  if (!confirm("Are you sure you want to delete this workout? This action cannot be undone.")) {
+    return;
+  }
+  
+  // Retrieve the current workout ID using your workoutKeys array and currentIndex.
+  var workoutID = workoutKeys[currentIndex];
+  var fullPath = basePath + workoutID; // e.g., '/workouts/' + workoutID
+
+  // Remove the workout from the Firebase database.
+  database.ref(fullPath).remove()
+    .then(() => {
+      alert("Workout deleted successfully!");
+      
+      // Optionally clear the editor fields or update the UI.
+      document.getElementById("editForm").innerHTML = "";
+      document.getElementById("fields").innerHTML = "";
+      
+      // You might also want to update workoutKeys/currentIndex here
+      // or refresh the list of workouts if needed.
+    })
+    .catch(error => {
+      alert("Error deleting workout: " + error.message);
+    });
+}
+
+
+loadWorkouts();
+
+
+
 //////////////////////////////////////////////////////////////////////// Creating exercises, editing past workouts 
+
+//-////////////////////////////////////////////////////////////////////// Exercise list editing
+// Global variables for managing the current type, category, exercise keys, and index.
+var currentExerciseType = "exercises"; // default type; user can change via typeSelector
+var currentExerciseCategory = null;    // will be set by the category selector
+var exerciseKeys = [];                 // Firebase keys for exercises in the selected category
+var currentExerciseIndex = 0;
+
+// Load available categories from the chosen root node (exercises or focusareas)
+function loadCategories(type) {
+  currentExerciseType = type;
+  var refPath = "/" + type + "/";
+  database.ref(refPath).once("value").then(snapshot => {
+    if (snapshot.exists()) {
+      var categories = Object.keys(snapshot.val());
+      var selector = document.getElementById("categorySelector");
+      if (selector) {
+        // Clear previous options
+        selector.innerHTML = "";
+        categories.forEach(cat => {
+          var option = document.createElement("option");
+          option.value = cat;
+          option.textContent = cat;
+          selector.appendChild(option);
+        });
+        // Set the current category to the first one and load its exercises for the editor.
+        currentExerciseCategory = categories[0];
+        loadExercisesEditor();
+      }
+    } else {
+      console.log("No categories found under " + refPath);
+    }
+  }).catch(error => console.error("Error loading categories:", error));
+}
+
+// Event listener for when the type selection changes.
+document.getElementById("typeSelector").addEventListener("change", function(e) {
+  loadCategories(e.target.value);
+});
+
+// Event listener for when the category selection changes.
+document.getElementById("categorySelector").addEventListener("change", function(e) {
+  currentExerciseCategory = e.target.value;
+  loadExercisesEditor();
+});
+
+// Load exercises for the current type and category for the editor section.
+function loadExercisesEditor() {
+  if (!currentExerciseCategory) return;
+  var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory;
+  console.log("Fetching exercises from:", refPath);
+  
+  database.ref(refPath).once("value").then(snapshot => {
+    if (snapshot.exists()) {
+      exerciseKeys = Object.keys(snapshot.val());
+      console.log("Exercise Keys:", exerciseKeys); // DEBUG
+      if (exerciseKeys.length > 0) {
+        currentExerciseIndex = 0;
+        displayExercise();
+      } else {
+        document.getElementById("exerciseeditorsection").innerHTML = "<p>No exercises found in this category.</p>";
+      }
+    } else {
+      document.getElementById("exerciseeditorsection").innerHTML = `<p>No data found at ${refPath}.</p>`;
+    }
+  }).catch(error => console.error("Error fetching exercises:", error));
+}
+
+// Display the current exercise for editing/viewing.
+function displayExercise() {
+  if (exerciseKeys.length === 0) return;
+  
+  var exerciseID = exerciseKeys[currentExerciseIndex];
+  var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
+  console.log("Fetching exercise from:", refPath); // DEBUG
+
+  database.ref(refPath).once("value").then(snapshot => {
+    var data = snapshot.val();
+    console.log("Exercise data received:", data); // DEBUG
+    var editorHTML = "";
+    if (data) {
+      editorHTML += `<h3>Exercise Info</h3>`;
+      editorHTML += `
+        <label style="display:inline-block; width:50px;">Name:</label>
+        <input type="text" id="exercise_name" value="${data.name || ''}"><br>
+        <label style="display:inline-block; width:50px;">Note:</label>
+        <input type="text" id="exercise_note" value="${data.note || ''}"><br>
+        <p>Exercise ${currentExerciseIndex + 1} of ${exerciseKeys.length}</p>
+      `;
+    } else {
+      editorHTML = "<p>No data for this exercise.</p>";
+    }
+    document.getElementById("exerciseeditorsection").innerHTML = editorHTML;
+  }).catch(error => console.error("Error displaying exercise:", error));
+}
+
+// Navigate to the next exercise.
+function nextexo() {
+  if (exerciseKeys.length > 0) {
+    currentExerciseIndex = (currentExerciseIndex + 1) % exerciseKeys.length;
+    displayExercise();
+  }
+}
+
+// Navigate to the previous exercise.
+function prevexo() {
+  if (exerciseKeys.length > 0) {
+    currentExerciseIndex = (currentExerciseIndex - 1 + exerciseKeys.length) % exerciseKeys.length;
+    displayExercise();
+  }
+}
+
+// Save changes made to the current exercise back to Firebase.
+function saveexo() {
+  if (exerciseKeys.length === 0) return;
+  var exerciseID = exerciseKeys[currentExerciseIndex];
+  var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
+  var updatedData = {
+    name: document.getElementById("exercise_name").value,
+    note: document.getElementById("exercise_note").value
+  };
+
+  database.ref(refPath).update(updatedData)
+    .then(() => {
+      alert("Exercise updated successfully!");
+      displayExercise();
+    })
+    .catch(error => alert("Error updating exercise: " + error.message));
+}
+
+// Delete the current exercise from Firebase.
+function deleteexo() {
+  if (exerciseKeys.length === 0) return;
+  if (!confirm("Are you sure you want to delete this exercise?")) return;
+  var exerciseID = exerciseKeys[currentExerciseIndex];
+  var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
+
+  database.ref(refPath).remove()
+    .then(() => {
+      alert("Exercise deleted successfully!");
+      // Remove the deleted exercise from the local keys array.
+      exerciseKeys.splice(currentExerciseIndex, 1);
+      if (currentExerciseIndex >= exerciseKeys.length) {
+        currentExerciseIndex = Math.max(exerciseKeys.length - 1, 0);
+      }
+      displayExercise();
+    })
+    .catch(error => alert("Error deleting exercise: " + error.message));
+}
+
+// Optionally, the 'Exercise Editor' button can refresh the current view.
+document.getElementById("showeditorbtn").addEventListener("click", function() {
+  displayExercise();
+});
+
+// On initial load, populate categories from the default type.
+loadCategories(currentExerciseType);
+
+
+//////////////////////////////////////////////////////////////////////// Exercise list editing
 
 //-////////////////////////////////////////////////////////////////////// Workout creation and saving
 
@@ -575,42 +983,65 @@ function addDraftListeners() {
 
 const toggleFormBtn = document.getElementById('toggleFormBtn');
 const addExerciseSection = document.getElementById('addExerciseSection');
-const showEditorBtn = document.getElementById('showeditorbtn');
-const editorSection = document.getElementById('editorsection');
+const workoutEditorBtn = document.getElementById('showeditorbtn');     // Workout Editor button
+const exoEditorBtn = document.getElementById('showexoeditorbtn');        // Exercise Editor button
+const workoutEditorSection = document.getElementById('editorsection');   // Workout Editor section
+const exerciseEditorSection = document.getElementById('exerciseeditor');    // Corrected to 'exerciseeditor'
 
-// Toggle form section and show/hide "Show Editor" button
+// Toggle form section and show/hide the two editor toggle buttons
 toggleFormBtn.addEventListener('click', () => {
   addExerciseSection.classList.toggle('hidden');
 
-  // Change button text based on visibility
+  // Change main toggle button text based on form visibility
   toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
     ? 'Add and Edit'
     : 'Hide';
 
-  // Show or hide the "Show Editor" button based on addExerciseSection's state
+  // When the form is hidden, hide both editor buttons and their sections
   if (addExerciseSection.classList.contains('hidden')) {
-    showEditorBtn.classList.add('hidden'); // Hide when form is hidden
-    editorSection.classList.add('hidden'); // Also hide editor if open
-    showEditorBtn.textContent = "Show Editor"; // Reset button text
+    workoutEditorBtn.classList.add('hidden');
+    exoEditorBtn.classList.add('hidden');
+    workoutEditorSection.classList.add('hidden');
+    exerciseEditorSection.classList.add('hidden');
+    // Reset editor buttons' text
+    workoutEditorBtn.textContent = 'Workout Editor';
+    exoEditorBtn.textContent = 'Exercise Editor';
   } else {
-    showEditorBtn.classList.remove('hidden'); // Show when form is visible
+    // When the form is visible, show both editor buttons
+    workoutEditorBtn.classList.remove('hidden');
+    exoEditorBtn.classList.remove('hidden');
   }
 });
 
-// Toggle editor section visibility
-showEditorBtn.addEventListener('click', () => {
-  editorSection.classList.toggle('hidden');
+// Toggle Workout Editor section
+workoutEditorBtn.addEventListener('click', () => {
+  workoutEditorSection.classList.toggle('hidden');      // Toggle workout editor
+  exerciseEditorSection.classList.add('hidden');        // Ensure exercise editor is hidden
 
-  // Change button text based on state
-  showEditorBtn.textContent = editorSection.classList.contains('hidden')
-    ? 'Show Editor'
-    : 'Hide Editor';
+  // Update button text based on state
+  workoutEditorBtn.textContent = workoutEditorSection.classList.contains('hidden')
+    ? 'Workout Editor'
+    : 'Hide Workout Editor';
+  // Reset the other button's text
+  exoEditorBtn.textContent = 'Exercise Editor';
 });
 
+// Toggle Exercise Editor section
+exoEditorBtn.addEventListener('click', () => {
+  exerciseEditorSection.classList.toggle('hidden');          // Toggle exercise editor
+  workoutEditorSection.classList.add('hidden');              // Ensure workout editor is hidden
+
+  // Update button text based on state
+  exoEditorBtn.textContent = exerciseEditorSection.classList.contains('hidden')
+    ? 'Exercise Editor'
+    : 'Hide Exercise Editor';
+  // Reset the other button's text
+  workoutEditorBtn.textContent = 'Workout Editor';
+});
 
 //////////////////////////////////////////////////////////////////////// Add and edit section functionality
 
-//-////////////////////////////////////////////////////////////////////// Past workouts section
+//-////////////////////////////////////////////////////////////////////// Past workouts list section
 
 // Select the button element for workouts
 const workoutButton = document.querySelector('#showworkouts .click');

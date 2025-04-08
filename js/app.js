@@ -317,6 +317,7 @@ addExerciseBtn.addEventListener('click', () => {
     saveWorkoutDraft();
 });
 
+let dropdownContent = []; // Global variable to store the generated dropdown content
 
 function renderExerciseDropdown(exercises, fromFocusAreas = false) {
   console.log("renderExerciseDropdown() called");
@@ -326,8 +327,8 @@ function renderExerciseDropdown(exercises, fromFocusAreas = false) {
 
   // Check if the dropdown exists in the HTML
   if (!exerciseSelect) {
-      console.error("❌ ERROR: exerciseSelect element not found!");
-      return;
+    console.error("❌ ERROR: exerciseSelect element not found!");
+    return;
   }
 
   // Clear existing options
@@ -343,41 +344,45 @@ function renderExerciseDropdown(exercises, fromFocusAreas = false) {
 
   // Check if exercises exist and are valid
   if (!exercises || typeof exercises !== "object" || Object.keys(exercises).length === 0) {
-      console.warn("⚠️ WARNING: No exercises found! Dropdown will be empty.");
-      return;
+    console.warn("⚠️ WARNING: No exercises found! Dropdown will be empty.");
+    return;
   }
+
+  dropdownContent = [];  // Reset the global variable before generating new content
 
   // Loop through categories in the exercises object
   for (const category in exercises) {
-      if (!category || typeof category !== "string" || category.toLowerCase() === "none" || !category.trim()) {
-          console.warn("⚠️ Skipping empty or 'none' category:", category);
-          continue;
+    if (!category || typeof category !== "string" || category.toLowerCase() === "none" || !category.trim()) {
+      console.warn("⚠️ Skipping empty or 'none' category:", category);
+      continue;
+    }
+
+    // Create an optgroup for each category
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = category.replace("_", " ").toUpperCase();
+
+    // Loop through exercises within the category
+    for (const exerciseId in exercises[category]) {
+      const exercise = exercises[category][exerciseId];
+
+      // Validate exercise object and name
+      if (!exercise || typeof exercise !== "object" || !exercise.name || typeof exercise.name !== "string" || exercise.name.toLowerCase() === "none" || !exercise.name.trim()) {
+        console.warn("⚠️ Skipping invalid exercise:", exercise);
+        continue;
       }
 
+      // Create an option for each exercise
+      const option = document.createElement("option");
+      option.value = exerciseId;
+      option.textContent = exercise.name;
+      optgroup.appendChild(option);
+    }
 
-      // Create an optgroup for each category
-      const optgroup = document.createElement("optgroup");
-      optgroup.label = category.replace("_", " ").toUpperCase();
+    // Append the optgroup to the global content array (for reuse)
+    dropdownContent.push(optgroup);
 
-      // Loop through exercises within the category
-      for (const exerciseId in exercises[category]) {
-          const exercise = exercises[category][exerciseId];
-
-          // Validate exercise object and name
-          if (!exercise || typeof exercise !== "object" || !exercise.name || typeof exercise.name !== "string" || exercise.name.toLowerCase() === "none" || !exercise.name.trim()) {
-              console.warn("⚠️ Skipping invalid exercise:", exercise);
-              continue;
-          }
-
-          // Create an option for each exercise
-          const option = document.createElement("option");
-          option.value = exerciseId;
-          option.textContent = exercise.name;
-          optgroup.appendChild(option);
-      }
-
-      // Append category group to the select dropdown
-      exerciseSelect.appendChild(optgroup);
+    // Also append the optgroup to the original dropdown
+    exerciseSelect.appendChild(optgroup);
   }
 
   console.log("✅ Dropdown updated successfully.");
@@ -683,14 +688,25 @@ function loadExercisesEditor() {
 // Display the current exercise for editing/viewing.
 function displayExercise() {
   if (exerciseKeys.length === 0) return;
-  
-  var exerciseID = exerciseKeys[currentExerciseIndex];
+
+  // Filter out the "note" key from exerciseKeys
+  const filteredExerciseKeys = exerciseKeys.filter(key => key !== "note");
+
+  // If there are no valid exercises, return
+  if (filteredExerciseKeys.length === 0) {
+    document.getElementById("exerciseeditorsection").innerHTML = "<p>No valid exercises available.</p>";
+    return;
+  }
+
+  // Get the current exercise ID based on the filtered list
+  var exerciseID = filteredExerciseKeys[currentExerciseIndex];
   var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
   console.log("Fetching exercise from:", refPath); // DEBUG
 
   database.ref(refPath).once("value").then(snapshot => {
     var data = snapshot.val();
     console.log("Exercise data received:", data); // DEBUG
+
     var editorHTML = "";
     if (data) {
       editorHTML += `<h3>Exercise Info</h3>`;
@@ -699,7 +715,7 @@ function displayExercise() {
         <input type="text" id="exercise_name" value="${data.name || ''}"><br>
         <label style="display:inline-block; width:50px;">Note:</label>
         <input type="text" id="exercise_note" value="${data.note || ''}"><br>
-        <p>Exercise ${currentExerciseIndex + 1} of ${exerciseKeys.length}</p>
+        <p>Exercise ${currentExerciseIndex + 1} of ${filteredExerciseKeys.length}</p>
       `;
     } else {
       editorHTML = "<p>No data for this exercise.</p>";
@@ -711,7 +727,10 @@ function displayExercise() {
 // Navigate to the next exercise.
 function nextexo() {
   if (exerciseKeys.length > 0) {
-    currentExerciseIndex = (currentExerciseIndex + 1) % exerciseKeys.length;
+    do {
+      currentExerciseIndex = (currentExerciseIndex + 1) % exerciseKeys.length;
+    } while (exerciseKeys[currentExerciseIndex] === "note"); // Skip the "note" node
+
     displayExercise();
   }
 }
@@ -719,7 +738,10 @@ function nextexo() {
 // Navigate to the previous exercise.
 function prevexo() {
   if (exerciseKeys.length > 0) {
-    currentExerciseIndex = (currentExerciseIndex - 1 + exerciseKeys.length) % exerciseKeys.length;
+    do {
+      currentExerciseIndex = (currentExerciseIndex - 1 + exerciseKeys.length) % exerciseKeys.length;
+    } while (exerciseKeys[currentExerciseIndex] === "note"); // Skip the "note" node
+
     displayExercise();
   }
 }
@@ -735,6 +757,17 @@ function saveexo() {
   };
 
   database.ref(refPath).update(updatedData)
+    .then(() => {
+      // Additionally, update the focus area note if a focus area is selected
+      // and the focus area notes textarea (with id "notesInput") exists.
+      var selectedFocusArea = categorySelector.value;
+      var notesTextarea = document.getElementById("notesInput");
+      if (selectedFocusArea && notesTextarea) {
+        return database.ref("focusareas").child(selectedFocusArea).update({ note: notesTextarea.value });
+      } else {
+        return Promise.resolve();
+      }
+    })
     .then(() => {
       alert("Exercise updated successfully!");
       displayExercise();
@@ -980,64 +1013,122 @@ function addDraftListeners() {
 
 
 //-////////////////////////////////////////////////////////////////////// Add and edit section functionality
-
-const toggleFormBtn = document.getElementById('toggleFormBtn');
-const addExerciseSection = document.getElementById('addExerciseSection');
-const workoutEditorBtn = document.getElementById('showeditorbtn');     // Workout Editor button
-const exoEditorBtn = document.getElementById('showexoeditorbtn');        // Exercise Editor button
-const workoutEditorSection = document.getElementById('editorsection');   // Workout Editor section
-const exerciseEditorSection = document.getElementById('exerciseeditor');    // Corrected to 'exerciseeditor'
+// Get elements// Get elements// Get elements
+const toggleFormBtn = document.getElementById("toggleFormBtn");
+const addExerciseSection = document.getElementById("addExerciseSection");
+const workoutEditorBtn = document.getElementById("showeditorbtn");
+const exoEditorBtn = document.getElementById("showexoeditorbtn");
+const workoutEditorSection = document.getElementById("editorsection");
+const exerciseEditorSection = document.getElementById("exerciseeditor");
+const categorySelector = document.getElementById("categorySelector");
+const typeSelector = document.getElementById("typeSelector");
+const exerciseNotesSection = document.getElementById("exercisenotessection");
 
 // Toggle form section and show/hide the two editor toggle buttons
-toggleFormBtn.addEventListener('click', () => {
-  addExerciseSection.classList.toggle('hidden');
+toggleFormBtn.addEventListener("click", () => {
+  addExerciseSection.classList.toggle("hidden");
+  toggleFormBtn.textContent = addExerciseSection.classList.contains("hidden") ? "Add and Edit" : "Hide";
 
-  // Change main toggle button text based on form visibility
-  toggleFormBtn.textContent = addExerciseSection.classList.contains('hidden')
-    ? 'Add and Edit'
-    : 'Hide';
-
-  // When the form is hidden, hide both editor buttons and their sections
-  if (addExerciseSection.classList.contains('hidden')) {
-    workoutEditorBtn.classList.add('hidden');
-    exoEditorBtn.classList.add('hidden');
-    workoutEditorSection.classList.add('hidden');
-    exerciseEditorSection.classList.add('hidden');
-    // Reset editor buttons' text
-    workoutEditorBtn.textContent = 'Workout Editor';
-    exoEditorBtn.textContent = 'Exercise Editor';
+  if (addExerciseSection.classList.contains("hidden")) {
+    workoutEditorBtn.classList.add("hidden");
+    exoEditorBtn.classList.add("hidden");
+    workoutEditorSection.classList.add("hidden");
+    exerciseEditorSection.classList.add("hidden");
+    workoutEditorBtn.textContent = "Workout Editor";
+    exoEditorBtn.textContent = "Exercise Editor";
   } else {
-    // When the form is visible, show both editor buttons
-    workoutEditorBtn.classList.remove('hidden');
-    exoEditorBtn.classList.remove('hidden');
+    workoutEditorBtn.classList.remove("hidden");
+    exoEditorBtn.classList.remove("hidden");
   }
 });
 
 // Toggle Workout Editor section
-workoutEditorBtn.addEventListener('click', () => {
-  workoutEditorSection.classList.toggle('hidden');      // Toggle workout editor
-  exerciseEditorSection.classList.add('hidden');        // Ensure exercise editor is hidden
-
-  // Update button text based on state
-  workoutEditorBtn.textContent = workoutEditorSection.classList.contains('hidden')
-    ? 'Workout Editor'
-    : 'Hide Workout Editor';
-  // Reset the other button's text
-  exoEditorBtn.textContent = 'Exercise Editor';
+workoutEditorBtn.addEventListener("click", () => {
+  workoutEditorSection.classList.toggle("hidden");
+  exerciseEditorSection.classList.add("hidden");
+  workoutEditorBtn.textContent = workoutEditorSection.classList.contains("hidden") ? "Workout Editor" : "Hide Workout Editor";
+  exoEditorBtn.textContent = "Exercise Editor";
 });
 
 // Toggle Exercise Editor section
-exoEditorBtn.addEventListener('click', () => {
-  exerciseEditorSection.classList.toggle('hidden');          // Toggle exercise editor
-  workoutEditorSection.classList.add('hidden');              // Ensure workout editor is hidden
-
-  // Update button text based on state
-  exoEditorBtn.textContent = exerciseEditorSection.classList.contains('hidden')
-    ? 'Exercise Editor'
-    : 'Hide Exercise Editor';
-  // Reset the other button's text
-  workoutEditorBtn.textContent = 'Workout Editor';
+exoEditorBtn.addEventListener("click", () => {
+  exerciseEditorSection.classList.toggle("hidden");
+  workoutEditorSection.classList.add("hidden");
+  exoEditorBtn.textContent = exerciseEditorSection.classList.contains("hidden") ? "Exercise Editor" : "Hide Exercise Editor";
+  workoutEditorBtn.textContent = "Workout Editor";
 });
+
+// Function to load the focus area note
+function loadFocusAreaNote() {
+  const selectedFocusArea = categorySelector.value;
+  exerciseNotesSection.innerHTML = ""; // Clear existing notes section
+
+  if (selectedFocusArea) {
+    const notesTextarea = document.createElement("textarea");
+    notesTextarea.setAttribute("id", "notesInput");
+    notesTextarea.style.width = "450px";
+    notesTextarea.style.height = "100px";
+    notesTextarea.style.marginTop = "10px";
+
+    database.ref("focusareas").child(selectedFocusArea).once("value", (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object" && data.note !== undefined && data.note.trim() !== "") {
+        notesTextarea.value = data.note; // Load existing note
+        notesTextarea.setAttribute("placeholder", ""); // No placeholder if note exists
+      } else {
+        notesTextarea.value = ""; // No note exists
+        notesTextarea.setAttribute("placeholder", `Notes for ${selectedFocusArea}`); // Show placeholder
+      }
+    });
+
+    exerciseNotesSection.appendChild(notesTextarea);
+  }
+}
+
+// Listen for changes on the category selector
+categorySelector.addEventListener("change", loadFocusAreaNote);
+
+// Delay loading of notes when switching to "Focus Areas"
+typeSelector.addEventListener("change", () => {
+  if (typeSelector.value === "focusareas") {
+    setTimeout(() => {
+      loadFocusAreaNote();
+    }, 500); // Short delay ensures categorySelector value updates first
+  } else {
+    exerciseNotesSection.innerHTML = ""; // Hide notes when switching to "Exercises"
+  }
+});
+
+
+
+// Save changes made to the current exercise back to Firebase
+function saveexo() {
+  if (exerciseKeys.length === 0) return;
+  var exerciseID = exerciseKeys[currentExerciseIndex];
+  var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
+  var updatedData = {
+    name: document.getElementById("exercise_name").value,
+    note: document.getElementById("exercise_note").value
+  };
+
+  database.ref(refPath).update(updatedData)
+    .then(() => {
+      if (typeSelector.value === "focusareas") {
+        var selectedFocusArea = categorySelector.value;
+        var notesTextarea = document.getElementById("notesInput");
+        if (selectedFocusArea && notesTextarea) {
+          return database.ref("focusareas").child(selectedFocusArea).update({ note: notesTextarea.value });
+        }
+      }
+      return Promise.resolve();
+    })
+    .then(() => {
+      alert("Exercise updated successfully!");
+      displayExercise();
+    })
+    .catch(error => alert("Error updating exercise: " + error.message));
+}
+
 
 //////////////////////////////////////////////////////////////////////// Add and edit section functionality
 

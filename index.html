@@ -90,7 +90,7 @@
             <form id="addExerciseForm" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <label for="newExerciseName">Exercise Name:</label>
                 <input type="text" id="newExerciseName" placeholder="Enter exercise name" required>
-                
+                <input type="text" id="newExerciseNote" placeholder="Add exercise note?">
                 <div class="row align-items-center">
                   <div class="col-auto">
                     <label for="exerciseCategory">Choose Category:</label>
@@ -163,6 +163,7 @@
   
                 <!-- Dropdown for selecting a category -->
                 <select id="categorySelector"></select>
+                <div id="exercisenotessection" style="margin-top: 10px;"></div>
                 <div id="exerciseeditorsection" style="margin-top: 10px;"></div>
               </div></div>
 
@@ -218,6 +219,12 @@
   <script src="js/app.js" defer></script>
   <script src="js/analytics.js" defer></script>
   <script src="js/auth.js" defer></script>
+  <script src="js/progress.js" defer></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
   <hr>
 
@@ -233,15 +240,38 @@
 
   
 
-    <div class="row p-3" id="progressdiv" class="hidden">
-      <!-- Add and Edit Section -->
-      <div class="col-12">
-          <button style="width: 135px;" id="toggleFormBtn">Show progress</button>
-          <section id="Progress section" style="margin-top: 10px;" class="hidden">
-            <button style="width: 135px;" id="toggleFormBtn">Best efforts</button>
-            <div id="besteffortsdiv"></div>
-            <button style="width: 135px;" id="toggleFormBtn">Notes</button>
-            <div id="notesdiv"></div>
+  <div class="row p-3" id="progressdiv">
+    <!-- Add and Edit Section -->
+    <div class="col-12">
+      <button style="width: 135px;" id="toggleprogressBtn">Show progress</button>
+      <div id="progressarea" class="hidden"><section id="Progress section" style="margin-top: 10px;">
+  
+        <select id="ORMexerciseInput" style="width: 160px;">
+
+          <!-- Add other exercises as needed -->
+        </select>
+        <input type="number" id="ORMrepsInput" placeholder="Reps (4-6)" />
+        <input type="number" id="ORMweightInput" placeholder="Weight (kg)" />
+        <button onclick="sendPerformanceData()">Record max effort set</button><br><br>
+  
+        <select id="ORMexerciseDropdown" style="width: 160px;">
+
+          <!-- Add other exercises as needed -->
+        </select>
+        <button onclick="generateChart()">Generate Chart</button>     
+        <br>
+            
+            <canvas id="progress-chart" width="800" height="500"></canvas>
+            <ul id="performanceList" ></ul>
+      </div>
+      </div>
+    </div>
+  </div>
+  
+
+
+          
+           
           </section>
       </div>
   </div>

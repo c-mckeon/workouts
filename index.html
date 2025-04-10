@@ -254,11 +254,11 @@
         <input type="number" id="ORMweightInput" placeholder="Weight (kg)" />
         <button onclick="sendPerformanceData()">Record max effort set</button><br><br>
   
-        <select id="ORMexerciseDropdown" style="width: 160px;">
+        <select id="ORMexerciseDropdown" style="width: 160px;" class="hidden">
 
           <!-- Add other exercises as needed -->
         </select>
-        <button onclick="generateChart()">Generate Chart</button>     
+        <button onclick="generateChart()">Chart</button>     
         <br>
             
             <canvas id="progress-chart" width="800" height="500"></canvas>

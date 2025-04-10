@@ -153,139 +153,183 @@ function deletePerformance(performanceKey) {
 }
 
 
-
-
-
-// Generate the chart for a selected exercise
+// Generate the chart for a selected exercise or for all exercises
 function generateChart() {
-  const selectedExercise = document.getElementById('ORMexerciseDropdown').value;
-  if (!selectedExercise) {
+  const dropdown = document.getElementById('ORMexerciseInput');
+  const selectedExerciseKey = dropdown.value.trim();
+  const selectedExerciseText = dropdown.options[dropdown.selectedIndex].text.trim();
+  
+  if (!selectedExerciseKey) {
     alert("Please select an exercise.");
     return;
   }
-
-  // Fetch performance data from Firebase (once, not listening for changes)
-  firebase.database().ref('estimoneRepMax').on('value', function(snapshot) {
-    var performanceList = document.getElementById("performanceList");
-    performanceList.innerHTML = ""; // Clear the existing list
-
-    var chartData = [];
-
-    snapshot.forEach(function(childSnapshot) {
-      var performanceData = childSnapshot.val();
-
-      // Only process data for the selected exercise
-      if (performanceData.exercise === selectedExercise) {
-        // Update the performance list
-        var li = document.createElement("li");
-        li.style.display = "flex";
-
-        // Create a delete button for each entry
-var deleteButton = document.createElement("button");
-deleteButton.textContent = "-";
-
-// Style the delete button to be centrally aligned and scaled around the center line
-deleteButton.style.marginRight = "10px"; // Keep the right margin
-deleteButton.style.height = "20px"; // Set height
-deleteButton.style.width = "20px"; // Optional: set width equal to height to make it square
-deleteButton.style.display = "flex"; // Use flexbox to align content
-deleteButton.style.alignItems = "center"; // Vertically center the "-" symbol
-deleteButton.style.justifyContent = "center"; // Horizontally center the "-" symbol
-deleteButton.style.padding = "0"; // Remove default padding
-deleteButton.addEventListener("click", function() {
-  deletePerformance(childSnapshot.key); // Handle delete performance entry
-});
-
-// Append the button to the list item
-li.appendChild(deleteButton);
-
-
-        // Create a span element to display performance data
-        var span = document.createElement("span");
-        span.textContent = `${performanceData.name}, Reps: ${performanceData.reps},  Weight: ${performanceData.weight} kg,  1RM: ${performanceData.estimated1RM.toFixed(2)}, ${performanceData.timestamp}`;
-        li.appendChild(span);
-
-        performanceList.appendChild(li);
-
-        // Add to chart data for the selected exercise
-        chartData.push({
-          x: new Date(performanceData.unixtime),  // x-axis: date
-          y: parseFloat(performanceData.estimated1RM)  // y-axis: estimated 1RM
-        });
-      }
+  
+  // First, fetch the exercise mapping (key → name) from ORMexercises
+  firebase.database().ref('ORMexercises').once('value').then(function(exerciseSnapshot) {
+    const exerciseMap = {};
+    exerciseSnapshot.forEach(function(child) {
+      exerciseMap[child.key] = child.val().name;
     });
 
-    if (chartData.length === 0) {
-      alert("No data found for the selected exercise.");
-      return;
-    }
+    // Then, fetch performance data from Firebase (once, not listening for changes)
+    firebase.database().ref('estimoneRepMax').once('value').then(function(snapshot) {
+      var performanceList = document.getElementById("performanceList");
+      performanceList.innerHTML = ""; // Clear the existing list
 
-    // Sort the chartData based on the x values (unixtime) to ensure chronological order
-    chartData.sort(function(a, b) {
-      return a.x - b.x;
-    });
-
-    // Optional: apply dynamic smoothing to the data (using your existing method)
-    function dynamicSmoothing(chartData, sigma, windowSize) {
-      let smoothedData = [];
-      for (let i = 0; i < chartData.length; i++) {
-        let centerTime = chartData[i].x;
-
-        let rollingSum = 0;
-        let rollingCount = 0;
-        let gaussianSum = 0;
-        let weightSum = 0;
-        let pointCountInWindow = 0;
-
-        // Compute rolling average (index-based window)
-        let start = Math.max(0, i - windowSize);
-        let end = Math.min(chartData.length - 1, i + windowSize);
-        for (let j = start; j <= end; j++) {
-          rollingSum += chartData[j].y;
-          rollingCount++;
-        }
-
-        // Compute Gaussian smoothing (time-based)
-        for (let j = 0; j < chartData.length; j++) {
-          let timeDiff = chartData[j].x - centerTime;
-          if (Math.abs(timeDiff) <= sigma) {
-            pointCountInWindow++;
+      // Define the dynamic smoothing function (unchanged)
+      function dynamicSmoothing(chartData, sigma, windowSize) {
+        let smoothedData = [];
+        for (let i = 0; i < chartData.length; i++) {
+          let centerTime = chartData[i].x;
+          let rollingSum = 0;
+          let rollingCount = 0;
+          let gaussianSum = 0;
+          let weightSum = 0;
+          let pointCountInWindow = 0;
+          let start = Math.max(0, i - windowSize);
+          let end = Math.min(chartData.length - 1, i + windowSize);
+          for (let j = start; j <= end; j++) {
+            rollingSum += chartData[j].y;
+            rollingCount++;
           }
-          let weight = Math.exp(-Math.pow(timeDiff, 2) / (2 * Math.pow(sigma, 2)));
-          gaussianSum += chartData[j].y * weight;
-          weightSum += weight;
+          for (let j = 0; j < chartData.length; j++) {
+            let timeDiff = chartData[j].x - centerTime;
+            if (Math.abs(timeDiff) <= sigma) {
+              pointCountInWindow++;
+            }
+            let weight = Math.exp(-Math.pow(timeDiff, 2) / (2 * Math.pow(sigma, 2)));
+            gaussianSum += chartData[j].y * weight;
+            weightSum += weight;
+          }
+          let rollingAvgY = rollingSum / rollingCount;
+          let gaussianAvgY = gaussianSum / weightSum;
+          let density = Math.min(8, Math.max(1, pointCountInWindow));
+          let blendFactor = (density - 1) / (8 - 1);
+          let gaussianWeight = 0.5 + 0.5 * blendFactor;
+          let rollingWeight = 1 - gaussianWeight;
+          let blendedY = rollingWeight * rollingAvgY + gaussianWeight * gaussianAvgY;
+          smoothedData.push({
+            x: chartData[i].x,
+            y: blendedY
+          });
+        }
+        return smoothedData;
+      }
+
+      let sigma = 1 * 24 * 60 * 60 * 1000;  // 10 days in milliseconds for Gaussian smoothing
+      let windowSize = 1;                     // window size of 5
+
+      // Check if "All exercises" is selected using the displayed text
+      if (selectedExerciseText.toLowerCase() === "all exercises") {
+        let groupedData = {};
+        let smoothedGroupedData = {};
+
+        snapshot.forEach(function(childSnapshot) {
+          var performanceData = childSnapshot.val();
+
+          // Update the performance list with every entry
+          var li = document.createElement("li");
+          li.style.display = "flex";
+
+          var deleteButton = document.createElement("button");
+          deleteButton.textContent = "-";
+          deleteButton.style.marginRight = "10px";
+          deleteButton.style.height = "20px";
+          deleteButton.style.width = "20px";
+          deleteButton.style.display = "flex";
+          deleteButton.style.alignItems = "center";
+          deleteButton.style.justifyContent = "center";
+          deleteButton.style.padding = "0";
+          deleteButton.addEventListener("click", function() {
+            deletePerformance(childSnapshot.key);
+          });
+          li.appendChild(deleteButton);
+
+          var span = document.createElement("span");
+          span.textContent = `${performanceData.name}, Reps: ${performanceData.reps},  Weight: ${performanceData.weight} kg,  1RM: ${performanceData.estimated1RM.toFixed(2)}, ${performanceData.timestamp}`;
+          li.appendChild(span);
+          performanceList.appendChild(li);
+
+          // Use the exerciseMap so that the label is the human-readable name, not the Firebase key
+          const exerciseKey = performanceData.exercise;
+          const exerciseName = exerciseMap[exerciseKey] || exerciseKey;
+          if (!groupedData[exerciseName]) {
+            groupedData[exerciseName] = [];
+          }
+          groupedData[exerciseName].push({
+            x: new Date(performanceData.unixtime),
+            y: parseFloat(performanceData.estimated1RM)
+          });
+        });
+
+        if (Object.keys(groupedData).length === 0) {
+          alert("No data found for the selected exercise.");
+          return;
         }
 
-        let rollingAvgY = rollingSum / rollingCount;
-        let gaussianAvgY = gaussianSum / weightSum;
+        for (let exercise in groupedData) {
+          groupedData[exercise].sort(function(a, b) {
+            return a.x - b.x;
+          });
+          smoothedGroupedData[exercise] = dynamicSmoothing(groupedData[exercise], sigma, windowSize);
+        }
 
-        // Normalize density from 1–8 to blendFactor 0–1
-        let density = Math.min(8, Math.max(1, pointCountInWindow));
-        let blendFactor = (density - 1) / (8 - 1); // 0 at 1 point, 1 at 8 points
+        createOrUpdateChart(groupedData, smoothedGroupedData, selectedExerciseText);
 
-        // Adjust to start at 20% Gaussian (i.e., 80% rolling)
-        let gaussianWeight = 0.5 + 0.5 * blendFactor;
-        let rollingWeight = 1 - gaussianWeight;
+      } else {
+        // Single exercise mode: use the Firebase key for filtering
+        var chartData = [];
 
-        let blendedY = rollingWeight * rollingAvgY + gaussianWeight * gaussianAvgY;
+        snapshot.forEach(function(childSnapshot) {
+          var performanceData = childSnapshot.val();
+          if (performanceData.exercise === selectedExerciseKey) {
+            var li = document.createElement("li");
+            li.style.display = "flex";
 
-        smoothedData.push({
-          x: chartData[i].x,
-          y: blendedY
+            var deleteButton = document.createElement("button");
+            deleteButton.textContent = "-";
+            deleteButton.style.marginRight = "10px";
+            deleteButton.style.height = "20px";
+            deleteButton.style.width = "20px";
+            deleteButton.style.display = "flex";
+            deleteButton.style.alignItems = "center";
+            deleteButton.style.justifyContent = "center";
+            deleteButton.style.padding = "0";
+            deleteButton.addEventListener("click", function() {
+              deletePerformance(childSnapshot.key);
+            });
+            li.appendChild(deleteButton);
+
+            var span = document.createElement("span");
+            span.textContent = `${performanceData.name}, Reps: ${performanceData.reps},  Weight: ${performanceData.weight} kg,  1RM: ${performanceData.estimated1RM.toFixed(2)}, ${performanceData.timestamp}`;
+            li.appendChild(span);
+            performanceList.appendChild(li);
+
+            chartData.push({
+              x: new Date(performanceData.unixtime),
+              y: parseFloat(performanceData.estimated1RM)
+            });
+          }
         });
+
+        if (chartData.length === 0) {
+          alert("No data found for the selected exercise.");
+          return;
+        }
+
+        chartData.sort(function(a, b) {
+          return a.x - b.x;
+        });
+        let combinedSmoothedData = dynamicSmoothing(chartData, sigma, windowSize);
+
+        createOrUpdateChart(chartData, combinedSmoothedData, selectedExerciseText);
       }
-      return smoothedData;
-    }
-
-    // Example values for smoothing: 10 days in ms for Gaussian and window size of 5
-    let sigma = 10 * 24 * 60 * 60 * 1000;
-    let windowSize = 5;
-    let combinedSmoothedData = dynamicSmoothing(chartData, sigma, windowSize);
-
-    // Create or update the chart on the canvas with id "progress-chart"
-    createOrUpdateChart(chartData, combinedSmoothedData, selectedExercise);
+    }).catch(function(error) {
+      console.error("Error fetching performance data:", error);
+    });
+  
   }).catch(function(error) {
-    console.error("Error fetching data:", error);
+    console.error("Error fetching exercises:", error);
   });
 }
 
@@ -294,33 +338,67 @@ li.appendChild(deleteButton);
 function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
   var ctx = document.getElementById('progress-chart').getContext('2d');
 
-  // Destroy previous chart if it exists
   if (window.performanceChart) {
     window.performanceChart.destroy();
   }
 
-  window.performanceChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      datasets: [{
-        label: ' Estimated 1RM',
-        data: chartData,
-        borderColor: 'blue',
+  let datasets = [];
+
+  if (exerciseLabel.trim().toLowerCase() === "all exercises") {
+    const colors = ['blue', 'red', 'green', 'orange', 'purple', 'cyan', 'magenta', 'brown'];
+    let colorIndex = 0;
+    for (let exercise in chartData) {
+      let color = colors[colorIndex % colors.length];
+      datasets.push({
+        label: exercise, // Only the exercise name
+        data: chartData[exercise],
+        borderColor: color,
         pointBackgroundColor: 'black',
         pointRadius: 3,
         fill: false,
         tension: 0.3,
         cubicInterpolationMode: 'monotone',
-        showLine: false,
-      }, {
-        label: 'Trendline',
-        data: smoothedData,
-        borderColor: 'red',
+        showLine: false
+      });
+      datasets.push({
+        label: '', // No label for trendline
+        data: smoothedData[exercise],
+        borderColor: color,
         pointRadius: 0,
         fill: false,
         tension: 0.3,
-        cubicInterpolationMode: 'monotone'
-      }]
+        cubicInterpolationMode: 'monotone',
+        // Do NOT set hidden: true here, as we want the trendline visible on the graph
+      });
+      colorIndex++;
+    }
+  } else {
+    datasets = [{
+      label: exerciseLabel, // Just the exercise name
+      data: chartData,
+      borderColor: 'blue',
+      pointBackgroundColor: 'black',
+      pointRadius: 3,
+      fill: false,
+      tension: 0.3,
+      cubicInterpolationMode: 'monotone',
+      showLine: false
+    }, {
+      label: '', // No label for trendline
+      data: smoothedData,
+      borderColor: 'red',
+      pointRadius: 0,
+      fill: false,
+      tension: 0.3,
+      cubicInterpolationMode: 'monotone',
+      // Again, no hidden: true here to ensure trendline remains on the graph
+    }];
+  }
+
+  window.performanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: datasets
     },
     options: {
       responsive: false,
@@ -347,13 +425,21 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
         }
       },
       plugins: {
+        legend: {
+          labels: {
+            filter: function(legendItem, chartData) {
+              // Exclude trendline datasets from the legend
+              return legendItem.datasetIndex % 2 === 0; // Only show the exercise datasets (not trendlines)
+            }
+          }
+        },
         tooltip: {
           callbacks: {
             title: function(context) {
-              return new Date(context[0].parsed.x).toLocaleDateString('en-US', { 
-                day: 'numeric', 
-                month: 'short', 
-                year: 'numeric' 
+              return new Date(context[0].parsed.x).toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
               });
             }
           }

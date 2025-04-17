@@ -262,6 +262,12 @@ function generateChart() {
           // Use the exerciseMap so that the label is the human-readable name, not the Firebase key
           const exerciseKey = performanceData.exercise;
           const exerciseName = exerciseMap[exerciseKey] || exerciseKey;
+
+          // EXCLUDE starred exercises when charting all
+          if (exerciseName.trim().startsWith('*')) {
+            return;
+          }
+
           if (!groupedData[exerciseName]) {
             groupedData[exerciseName] = [];
           }
@@ -342,8 +348,8 @@ function generateChart() {
   });
 
   document.getElementById('toggleButton').classList.remove('hidden');
-
 }
+
 
 
 // Function to create or update the chart using Chart.js

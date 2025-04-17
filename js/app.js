@@ -443,13 +443,14 @@ function displayCurrentNode() {
               date: "Date",
               duration: "Duration",
               intensity: "Intensity",
-              intensityNote: "Note"
+              intensityNote: "Note",
+              result: "Result" 
           };
       
           for (const key in workoutFields) {
               fieldsHTML += `
                   <label style="display:inline-block; width:65px">${workoutFields[key]}: </label>
-                  <input type="text" id="workout_${key}" value="${data[key] || ''}"><br>
+                  <input type="text" style=" width:350px" id="workout_${key}" value="${data[key] || ''}"><br>
               `;
           }
       }
@@ -1195,11 +1196,13 @@ function renderSavedWorkouts() {
         const noteText = e.note ? ` ${e.note}` : '';
         return `<span style="color: blue;">${e.name}</span>: ${setsRepsText} <span style="color: red;">${noteText}</span>`;
       }).join('<br>');
+      const result = workout.result ? `<br><span style="color: darkorange;">Result: ${workout.result}</span>` : '';
+
       
       workoutDiv.innerHTML = `
         <p><strong>Workout on ${date}</strong><br>
           <span style="color: green;">${intensity}${intensity ? ' &nbsp;&nbsp; ' : ''}${duration} ${intensityNote ? `${intensityNote}<br>` : '<br>'}</span>
-          ${exercises}
+            ${exercises}${result}
         </p>
       `;
       
@@ -1246,7 +1249,56 @@ function getToday() {
 
 
 
+//-////////////////////////////////////////////////////////////////////// last workout result field 
+function checkLastWorkoutResult() {
+  const workoutsRef = database.ref('workouts');
+
+  workoutsRef.orderByChild('date').limitToLast(1).once('value', snapshot => {
+    if (snapshot.exists()) {
+      snapshot.forEach(child => {
+        const workout = child.val();
+        const workoutKey = child.key;
+
+        // Only show if result is missing or empty
+        if (!workout.result || workout.result.trim() === '') {
+          const date = workout.date || 'recently';
+          const input = document.getElementById('lastworkoutresult');
+          const resultSection = document.getElementById('resultsection');
+
+          input.placeholder = `How did you feel after your workout on ${date}?`;
+          input.dataset.key = workoutKey; // Save the key for use when saving
+          resultSection.classList.remove('hidden');
+        }
+      });
+    }
+  });
+}
+
+function savelastworkoutresult() {
+  const input = document.getElementById('lastworkoutresult');
+  const workoutKey = input.dataset.key;
+  const result = input.value.trim();
+
+  if (!result) {
+    alert('Please enter how you felt!');
+    return;
+  }
+
+  const workoutRef = database.ref('workouts/' + workoutKey);
+  workoutRef.update({ result: result }, (error) => {
+    if (error) {
+      console.error('Error saving result:', error);
+    } else {
+      document.getElementById('resultsection').classList.add('hidden');
+    }
+  });
+}
+
+
+
+
 // Initialize the app
 loadExercises();
 loadWorkoutDraft();
 renderSavedWorkouts();  // Ensure saved workouts are shown when the app loads
+checkLastWorkoutResult();

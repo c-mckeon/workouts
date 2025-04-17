@@ -21,8 +21,11 @@
       <div class="col-2" style="margin-left: 40px; display: none;">
         <button type="button" id="resetBtn" class="btn btn-primary" style="background-color: red; border: none;">reset</button>
       </div>
+      
     </div>
   </div>
+
+
   
   <hr>
 
@@ -77,7 +80,23 @@
     <div class="col-sm-2">
       <button style="width: 135px;" id="saveWorkoutBtn">Save Workout</button>
     </div>
+  
+    <div class="col-sm-10">
+      <div id="resultsection" class="hidden">
+        <div class="row align-items-center"> <!-- 👈 This aligns input + button vertically centered -->
+          <div class="col-auto">
+            <input type="text" id="lastworkoutresult" class="form-control" placeholder="How did you feel after your workout on [date]?" 
+            style="min-width: 450px; background-color: rgb(247, 216, 221); max-height: 29.2px;">
+          </div>
+          <div class="col-auto">
+            <button type="button" id="savelastworkoutbtn" class="btn"  style=" max-height: 29.2px;" onclick="savelastworkoutresult()">➕</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+  
+
 
   <hr>
 
@@ -252,17 +271,20 @@
         </select>
         <input type="number" id="ORMrepsInput" placeholder="Reps (4-6)" />
         <input type="number" id="ORMweightInput" placeholder="Weight (kg)" />
-        <button onclick="sendPerformanceData()">Record max effort set</button><br><br>
+        <button onclick="handleRecordMaxEffort()">Record max effort set</button>
   
         <select id="ORMexerciseDropdown" style="width: 160px;" class="hidden">
 
           <!-- Add other exercises as needed -->
         </select>
+        
         <button onclick="generateChart()">Chart</button>     
-        <br>
+        <br>   <br>
             
             <canvas id="progress-chart" width="800" height="500"></canvas>
-            <ul id="performanceList" ></ul>
+            <button id="toggleButton" class="hidden">Show Data</button>
+
+            <ul id="performanceList" class="hidden"></ul>
       </div>
       </div>
     </div>

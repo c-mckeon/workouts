@@ -2,6 +2,7 @@ document.getElementById('toggleprogressBtn').addEventListener('click', () => {
   const progressArea = document.getElementById('progressarea');
   progressArea.classList.toggle('hidden');
   fillAdditionalDropdowns();
+  generateChart()
 });
 
 
@@ -19,6 +20,13 @@ function fillAdditionalDropdowns() {
             // Clear existing options
             dropdown.innerHTML = "";
 
+           // Add the "All exercises" option at the top
+const allOption = document.createElement('option');
+allOption.value = "all";
+allOption.textContent = "All exercises";
+dropdown.appendChild(allOption);
+
+            
             // Fetch exercises from Firebase
             ORMexerciseRef.once('value', snapshot => {
                 const exercises = snapshot.val();
@@ -100,7 +108,6 @@ function sendPerformanceData() {
     const lombardi = weight * Math.pow(reps, 0.10);
     const oconner = weight * (1 + 0.025 * reps);
     const wathan = (100 * weight) / (48.8 + 53.8 * Math.exp(-0.075 * reps));
-    const mayhew = (100 * weight) / (52.2 + 41.9 * Math.exp(-0.055 * reps));
 
     // Output each formula's estimate
     console.log(`Epley: ${epley.toFixed(2)}`);
@@ -108,10 +115,10 @@ function sendPerformanceData() {
     console.log(`Lombardi: ${lombardi.toFixed(2)}`);
     console.log(`O’Conner: ${oconner.toFixed(2)}`);
     console.log(`Wathan: ${wathan.toFixed(2)}`);
-    console.log(`Mayhew: ${mayhew.toFixed(2)}`);
+
 
     // Calculate the average of all formulas
-    const estimated1RM = (epley + brzycki + lombardi + oconner + wathan + mayhew) / 6;
+    const estimated1RM = (epley + brzycki + lombardi + oconner + wathan ) / 5;
     console.log(`Average 1RM: ${estimated1RM.toFixed(2)}`);
 
     const timestamp = new Date(new Date().getTime() + 2 * 60 * 60 * 1000).toISOString();
@@ -147,6 +154,8 @@ function deletePerformance(performanceKey) {
     }).catch(function(error) {
 
     });
+   
+    generateChart();
   } else {
 
   }
@@ -217,7 +226,7 @@ function generateChart() {
       }
 
       let sigma = 1 * 24 * 60 * 60 * 1000;  // 10 days in milliseconds for Gaussian smoothing
-      let windowSize = 1;                     // window size of 5
+      let windowSize = 0;                     // window size of 5
 
       // Check if "All exercises" is selected using the displayed text
       if (selectedExerciseText.toLowerCase() === "all exercises") {
@@ -331,6 +340,9 @@ function generateChart() {
   }).catch(function(error) {
     console.error("Error fetching exercises:", error);
   });
+
+  document.getElementById('toggleButton').classList.remove('hidden');
+
 }
 
 
@@ -345,7 +357,17 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
   let datasets = [];
 
   if (exerciseLabel.trim().toLowerCase() === "all exercises") {
-    const colors = ['blue', 'red', 'green', 'orange', 'purple', 'cyan', 'magenta', 'brown'];
+    const colors = [
+      '#FF6F61', // Coral
+      '#2C9AB7', // Lavender
+      '#88974b', // Olive Green
+      '#F7B7A3', // Peach
+      '#e60073', // purp
+      '#6B5B95', // Sky Blue
+      '#9dbf9d', // Cool Grey
+      '#D5C6E0'  // Light Lilac
+    ];
+    
     let colorIndex = 0;
     for (let exercise in chartData) {
       let color = colors[colorIndex % colors.length];
@@ -353,7 +375,7 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
         label: exercise, // Only the exercise name
         data: chartData[exercise],
         borderColor: color,
-        pointBackgroundColor: 'black',
+        pointBackgroundColor: color,
         pointRadius: 3,
         fill: false,
         tension: 0.3,
@@ -395,6 +417,8 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
     }];
   }
 
+
+  
   window.performanceChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -406,16 +430,19 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
         x: {
           type: 'time',
           time: {
-            unit: 'day',
+            unit: 'week',
             displayFormats: {
-              day: 'dd MMM yyyy'
+              day: 'dd MMM'
             }
           },
+          min: '2025-04-06',
+          max: new Date(new Date('2025-04-09').setMonth(new Date('2025-04-09').getMonth() + 1)).toISOString().split('T')[0],
           title: {
             display: true,
             text: 'Date'
           }
         },
+      
         y: {
           beginAtZero: false,
           title: {
@@ -448,3 +475,44 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
     }
   });
 }
+
+
+document.getElementById('toggleButton').addEventListener('click', function() {
+  var performanceList = document.getElementById('performanceList');
+  // Show the performance list
+  performanceList.classList.remove('hidden');
+  // Hide the button
+  this.style.display = 'none';
+});
+
+
+
+
+function handleRecordMaxEffort() {
+  // Step 1: Save the performance data
+  sendPerformanceData();
+
+  // Step 2: Set the dropdown to "All exercises" (by label)
+  const dropdown = document.getElementById("ORMexerciseInput");
+  if (!dropdown) return;
+
+  let found = false;
+  for (let option of dropdown.options) {
+    if (option.textContent.trim().toLowerCase() === "all exercises") {
+      dropdown.value = option.value; // Match the internal value that corresponds to the label
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    console.warn("⚠️ Could not find an option labeled 'All exercises' in the dropdown.");
+    return;
+  }
+
+  // Step 3: Defer generateChart() to allow the DOM/UI to reflect the new dropdown state
+  setTimeout(() => {
+    generateChart();
+  }, 0);
+}
+

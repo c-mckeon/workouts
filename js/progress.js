@@ -442,7 +442,7 @@ function createOrUpdateChart(chartData, smoothedData, exerciseLabel) {
             }
           },
           min: '2025-04-06',
-          max: new Date(new Date('2025-04-09').setMonth(new Date('2025-04-09').getMonth() + 1)).toISOString().split('T')[0],
+          max: new Date(new Date('2026-04-09').setMonth(new Date('2026-04-09').getMonth() + 1)).toISOString().split('T')[0],
           title: {
             display: true,
             text: 'Date'

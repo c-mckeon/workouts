@@ -1,0 +1,19 @@
+I'd like 
+
+• to have qualifiers for different exercises so that pushup and pike pushup are not separate exercises. 
+
+• to have workouts fit into more than one exercise class so that I could filter by exercises for specific physio things I want to fix instead of things always being filtered by exercise type or physio exercise etc.
+- These two could be linked somehow so that filtering would allow me to remember which exercise variations I need to always factor into workouts. I could maybe have different types of exercise lists that way my main one doesn't get clogged and for each exercise I can assign it to different lists and add variation information.    
+/// How to do this: 
+Option 1 • add a field to each exercise node with alternate classification e.g. name: pushup variations: pike, spiderman alt: pec atrophy
+Option 2 • Beside the Exercise node, have a Focus node which has focus areas instead of exercises, like scap winging and in here go exercises also. so when i add a new exercise i can choose if it goes in a focus area too (or several) then i can choose to select exercises from the focus area list or the exercise list 
+
+
+
+
+
+• More expanded note taking / learning / best effort system so I can remember important things to work on as time goes on
+
+
+
+

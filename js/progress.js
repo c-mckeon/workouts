@@ -5,6 +5,340 @@ document.getElementById('toggleprogressBtn').addEventListener('click', () => {
   generateChart()
 });
 
+let exerciseCategoryCache = null;
+let exerciseCategoryNameCache = null;
+
+document.getElementById('toggleVolumeBtn').addEventListener('click', () => {
+  const volumeArea = document.getElementById('volumearea');
+  volumeArea.classList.toggle('hidden');
+  document.getElementById('toggleVolumeBtn').textContent = volumeArea.classList.contains('hidden') ? 'Show Volume' : 'Hide Volume';
+  if (!volumeArea.classList.contains('hidden')) {
+    loadVolumeMonthData(currentVolumeYear, currentVolumeMonth);
+  }
+});
+
+const monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+let currentVolumeYear = new Date().getFullYear();
+let currentVolumeMonth = new Date().getMonth();
+
+function formatVolumeMonthLabel(year, month) {
+  return `${monthNames[month]} ${year}`;
+}
+
+function parseWorkoutDate(workout) {
+  const dateValue = workout.date || workout.createdAt || workout.timestamp || workout.dateString;
+  if (!dateValue) return null;
+
+  const parsed = new Date(dateValue);
+  if (!isNaN(parsed)) return parsed;
+
+  const numeric = new Date(parseInt(dateValue, 10));
+  return !isNaN(numeric) ? numeric : null;
+}
+
+function getExerciseVolume(exercise) {
+  if (!exercise) return { sets: 0, reps: 0, weight: 0, setWeightSum: 0, setCount: 0, setPositionWeights: [] };
+
+  let sets = 0;
+  let reps = 0;
+  let weight = 0;
+  let setWeightSum = 0;
+  let setCount = 0;
+  const setPositionWeights = [];
+
+  if (Array.isArray(exercise.setsList) && exercise.setsList.length > 0) {
+    exercise.setsList.forEach((set, index) => {
+      const setReps = parseInt(set.reps, 10) || 0;
+      const setWeightString = set.weight != null ? String(set.weight).trim() : '';
+      const setWeight = parseFloat(setWeightString);
+      const hasWeightData = setWeightString !== '' && !isNaN(setWeight);
+      const totalSetWeight = setReps * (hasWeightData ? setWeight : 0);
+
+      sets += 1;
+      reps += setReps;
+      weight += totalSetWeight;
+      setWeightSum += totalSetWeight;
+      if (hasWeightData) {
+        setCount += 1;
+        setPositionWeights[index] = (setPositionWeights[index] || 0) + totalSetWeight;
+      }
+    });
+    return { sets, reps, weight, setWeightSum, setCount, setPositionWeights };
+  }
+
+  sets = parseInt(exercise.sets, 10);
+  if (isNaN(sets)) sets = 0;
+
+  const repsPerSet = parseInt(exercise.reps, 10);
+  if (!isNaN(repsPerSet)) {
+    reps = sets * repsPerSet;
+  } else if (typeof exercise.reps === 'number' && !isNaN(exercise.reps)) {
+    reps = exercise.reps;
+  } else {
+    reps = 0;
+  }
+
+  const weightString = exercise.weight != null ? String(exercise.weight).trim() : '';
+  const weightPerSet = parseFloat(weightString);
+  const hasLegacyWeight = weightString !== '' && !isNaN(weightPerSet);
+  if (hasLegacyWeight) {
+    weight = reps * weightPerSet;
+    setCount = sets;
+    setWeightSum = weight;
+    for (let i = 0; i < sets; i += 1) {
+      setPositionWeights[i] = weightPerSet * (repsPerSet || 0);
+    }
+  } else {
+    weight = 0;
+    setWeightSum = 0;
+    setCount = 0;
+  }
+
+  return { sets, reps, weight, setWeightSum, setCount, setPositionWeights };
+}
+
+function getExerciseName(exercise) {
+  if (!exercise) return 'Unnamed exercise';
+  return exercise.name || exercise.exerciseName || exercise.title || 'Unnamed exercise';
+}
+
+function getCategoryFromExercise(exercise) {
+  if (!exercise) return 'Uncategorized';
+  const directCategory = exercise.category || exercise.categoryName || exercise.type;
+  if (directCategory && directCategory.toString().trim() !== '') {
+    return directCategory;
+  }
+
+  if (exercise.id && exerciseCategoryCache && exerciseCategoryCache[exercise.id]) {
+    return exerciseCategoryCache[exercise.id];
+  }
+
+  if (exercise.name && exerciseCategoryNameCache && exerciseCategoryNameCache[exercise.name.toString().toLowerCase()]) {
+    return exerciseCategoryNameCache[exercise.name.toString().toLowerCase()];
+  }
+
+  return 'Uncategorized';
+}
+
+function loadExerciseCategoryCache() {
+  if (exerciseCategoryCache && exerciseCategoryNameCache) {
+    return Promise.resolve();
+  }
+
+  exerciseCategoryCache = {};
+  exerciseCategoryNameCache = {};
+
+  const exercisesRef = database.ref('exercises');
+  const focusRef = database.ref('focusareas');
+
+  return Promise.all([
+    exercisesRef.once('value'),
+    focusRef.once('value')
+  ]).then(([exSnapshot, focusSnapshot]) => {
+    const exercises = exSnapshot.val();
+    if (exercises && typeof exercises === 'object') {
+      Object.keys(exercises).forEach(category => {
+        const categoryItems = exercises[category];
+        if (categoryItems && typeof categoryItems === 'object') {
+          Object.keys(categoryItems).forEach(exerciseId => {
+            const exercise = categoryItems[exerciseId];
+            exerciseCategoryCache[exerciseId] = category;
+            if (exercise && exercise.name) {
+              exerciseCategoryNameCache[exercise.name.toString().toLowerCase()] = category;
+            }
+          });
+        }
+      });
+    }
+
+    const focusAreas = focusSnapshot.val();
+    if (focusAreas && typeof focusAreas === 'object') {
+      Object.keys(focusAreas).forEach(category => {
+        const categoryItems = focusAreas[category];
+        if (categoryItems && typeof categoryItems === 'object') {
+          Object.keys(categoryItems).forEach(exerciseId => {
+            const exercise = categoryItems[exerciseId];
+            exerciseCategoryCache[exerciseId] = category;
+            if (exercise && exercise.name) {
+              exerciseCategoryNameCache[exercise.name.toString().toLowerCase()] = category;
+            }
+          });
+        }
+      });
+    }
+  }).catch(error => {
+    console.error('Error loading exercise category cache:', error);
+  });
+}
+
+function updateVolumeMonthLabel(year, month) {
+  const label = document.getElementById('volumeMonthLabel');
+  if (label) {
+    label.textContent = formatVolumeMonthLabel(year, month);
+  }
+}
+
+function loadVolumeMonthData(year, month) {
+  updateVolumeMonthLabel(year, month);
+  const tableBody = document.getElementById('volumeTableBody');
+  const emptyMessage = document.getElementById('volumeEmptyMessage');
+
+  if (!tableBody || !emptyMessage) return;
+
+  tableBody.innerHTML = '';
+  emptyMessage.textContent = 'Loading volume data...';
+  emptyMessage.style.display = 'block';
+
+  database.ref('workouts').once('value').then(snapshot => {
+    const workouts = snapshot.val();
+    const totalsByExercise = {};
+
+    if (!workouts) {
+      emptyMessage.textContent = 'No workouts saved yet.';
+      return;
+    }
+
+    Object.values(workouts).forEach(workout => {
+      const workoutDate = parseWorkoutDate(workout);
+      if (!workoutDate) return;
+      if (workoutDate.getFullYear() !== year || workoutDate.getMonth() !== month) return;
+
+      if (!Array.isArray(workout.exercises)) return;
+
+      workout.exercises.forEach(exercise => {
+        const exerciseName = getExerciseName(exercise);
+        const exerciseLabel = exercise.category ? `${exerciseName} (${exercise.category})` : exerciseName;
+        const volume = getExerciseVolume(exercise);
+        if (!totalsByExercise[exerciseLabel]) {
+          totalsByExercise[exerciseLabel] = { sets: 0, reps: 0, weight: 0, setWeightSum: 0, setCount: 0, setPositionTotals: {} };
+        }
+        totalsByExercise[exerciseLabel].sets += volume.sets;
+        totalsByExercise[exerciseLabel].reps += volume.reps;
+        totalsByExercise[exerciseLabel].weight += volume.weight;
+        totalsByExercise[exerciseLabel].setWeightSum += volume.setWeightSum || 0;
+        totalsByExercise[exerciseLabel].setCount += volume.setCount || 0;
+
+        if (Array.isArray(volume.setPositionWeights)) {
+          volume.setPositionWeights.forEach((setWeight, setIndex) => {
+            const position = setIndex + 1;
+            if (!totalsByExercise[exerciseLabel].setPositionTotals[position]) {
+              totalsByExercise[exerciseLabel].setPositionTotals[position] = { weightSum: 0, count: 0 };
+            }
+            totalsByExercise[exerciseLabel].setPositionTotals[position].weightSum += setWeight;
+            totalsByExercise[exerciseLabel].setPositionTotals[position].count += 1;
+          });
+        }
+      });
+    });
+
+    const entries = Object.entries(totalsByExercise)
+      .map(([exerciseName, exerciseVolume]) => {
+        const setPositionAverages = Object.keys(exerciseVolume.setPositionTotals)
+          .map(key => Number(key))
+          .sort((a, b) => a - b)
+          .map(position => {
+            const totals = exerciseVolume.setPositionTotals[position];
+            return {
+              position,
+              avgWeight: totals.count > 0 ? totals.weightSum / totals.count : 0
+            };
+          });
+
+        if (setPositionAverages.length === 0 && exerciseVolume.setCount > 0) {
+          setPositionAverages.push({ position: 1, avgWeight: exerciseVolume.setWeightSum / exerciseVolume.setCount });
+        }
+
+        return {
+          exerciseName,
+          ...exerciseVolume,
+          setPositionAverages
+        };
+      })
+      .sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
+
+    if (entries.length === 0) {
+      emptyMessage.textContent = 'No sets recorded for this month.';
+      return;
+    }
+
+    emptyMessage.style.display = 'none';
+    const maxAvg = Math.max(
+      1,
+      ...entries.flatMap(entry => entry.setPositionAverages.map(set => set.avgWeight))
+    );
+    let totals = { sets: 0, reps: 0, weight: 0, setWeightSum: 0, setCount: 0 };
+
+    entries.forEach(entry => {
+      totals.sets += entry.sets;
+      totals.reps += entry.reps;
+      totals.weight += entry.weight;
+      totals.setWeightSum += entry.setWeightSum;
+      totals.setCount += entry.setCount;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${entry.exerciseName}</td>
+        <td>${entry.sets}</td>
+        <td>${entry.reps}</td>
+        <td class="volume-bar-cell">
+          <div class="volume-bar-wrapper">
+            ${entry.setPositionAverages.map(set => `
+              <div class="volume-bar-column">
+                <div class="volume-bar" style="height: ${Math.round((set.avgWeight / maxAvg) * 100)}%;"></div>
+                <div class="volume-bar-footnote">${set.position}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="volume-bar-total">${entry.setPositionAverages.map(set => set.avgWeight.toFixed(1)).join(', ')} kg</div>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+
+    const averageOverall = totals.setCount > 0 ? totals.setWeightSum / totals.setCount : 0;
+    const totalRow = document.createElement('tr');
+    totalRow.style.fontWeight = '700';
+    totalRow.innerHTML = `
+      <td>Total</td>
+      <td>${totals.sets}</td>
+      <td>${totals.reps}</td>
+      <td class="volume-bar-cell">
+        <div class="volume-bar-wrapper">
+          <div class="volume-bar-column">
+            <div class="volume-bar" style="height: ${Math.round((averageOverall / maxAvg) * 100)}%;"></div>
+            <div class="volume-bar-footnote">avg</div>
+          </div>
+        </div>
+        <div class="volume-bar-total">${averageOverall.toFixed(1)} kg</div>
+      </td>
+    `;
+    tableBody.appendChild(totalRow);
+  }).catch(error => {
+    emptyMessage.textContent = `Error loading volume data: ${error.message}`;
+  });
+}
+
+document.getElementById('volumePrevMonth').addEventListener('click', () => {
+  currentVolumeMonth -= 1;
+  if (currentVolumeMonth < 0) {
+    currentVolumeMonth = 11;
+    currentVolumeYear -= 1;
+  }
+  loadVolumeMonthData(currentVolumeYear, currentVolumeMonth);
+});
+
+document.getElementById('volumeNextMonth').addEventListener('click', () => {
+  currentVolumeMonth += 1;
+  if (currentVolumeMonth > 11) {
+    currentVolumeMonth = 0;
+    currentVolumeYear += 1;
+  }
+  loadVolumeMonthData(currentVolumeYear, currentVolumeMonth);
+});
+
 
 // Firebase reference for ORMexercises 
 const ORMexerciseRef = database.ref('ORMexercises');

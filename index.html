@@ -331,5 +331,36 @@
 
 
 
+  <hr>
+
+  <div class="row p-3" id="showvolume">
+    <div class="col-12">
+      <button style="width: 135px;" id="toggleVolumeBtn">Show Volume</button>
+      <div id="volumearea" class="hidden" style="margin-top: 10px;">
+        <section id="Volume section" style="margin-top: 10px;">
+          <div class="volume-header" style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <button id="volumePrevMonth" class="btn btn-sm btn-outline-secondary">←</button>
+            <span id="volumeMonthLabel" style="font-weight:600; font-size:1rem;"></span>
+            <button id="volumeNextMonth" class="btn btn-sm btn-outline-secondary">→</button>
+          </div>
+          <div id="volumeTableWrapper" style="overflow-x:auto;">
+            <table id="volumeTable" class="table table-sm table-bordered" style="min-width:520px;">
+              <thead>
+                <tr>
+                  <th>Exercise</th>
+                  <th>Sets</th>
+                  <th>Reps</th>
+                  <th>Avg weight per set (kg)</th>
+                </tr>
+              </thead>
+              <tbody id="volumeTableBody"></tbody>
+            </table>
+          </div>
+          <div id="volumeEmptyMessage" style="padding:12px; color:#555;">Loading volume data...</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

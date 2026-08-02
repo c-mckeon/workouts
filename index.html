@@ -170,18 +170,21 @@
 
               <!-- Your exercise management section -->
               <div id="exoeditorsection">
-                <button type="button" id="exoPrevBtn">⬅️</button>
-                <button type="button" id="exoNextBtn">➡️</button>
                 <button type="button" id="saveExoBtn">💾 Save changes</button>
                 <button type="button" id="deleteExoBtn">🗑️ Delete exercise</button><br>
               <div style="margin-top: 10px; border-left: 10px solid rgb(255, 157, 0); padding-left: 10px;">
-                <select style="margin-top: 10px;" id="typeSelector">
-                  <option value="exercises">Exercises</option>
-                  <option value="focusareas">Focus Areas</option>
-                </select>
+                <div class="mb-2">
+                  <select style="margin-top: 10px;" id="typeSelector">
+                    <option value="exercises">Exercises</option>
+                    <option value="focusareas">Focus Areas</option>
+                  </select>
   
-                <!-- Dropdown for selecting a category -->
-                <select id="categorySelector"></select>
+                  <!-- Dropdown for selecting a category -->
+                  <select id="categorySelector"></select>
+                  <!-- Dropdown for selecting a specific exercise -->
+                  <select id="exerciseSelector"></select>
+                </div>
+                <div id="exerciseTrackingOptions" style="margin-top: 10px;"></div>
                 <div id="exercisenotessection" style="margin-top: 10px;"></div>
                 <div id="exerciseeditorsection" style="margin-top: 10px;"></div>
               </div></div>

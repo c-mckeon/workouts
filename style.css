@@ -89,8 +89,8 @@
 }
 
 .single-set-row .set-note-input {
-  width: 8rem;
-  min-width: 8rem;
+  width: 6rem;
+  min-width: 6rem;
 }
 
 .single-set-row .remove-set-btn,
@@ -107,22 +107,34 @@
   font-size: 0.85rem;
 }
 
-.volume-col,
-.note-col {
-  min-width: 14rem;
+.volume-col {
+  min-width: 10rem;
+  max-width: 18rem;
   flex: 0 0 auto;
 }
 
-.volume-col {
-  max-width: 18rem;
-}
-
 .note-col {
-  min-width: 12rem;
+  min-width: 6rem;
+  max-width: 12rem;
+  flex: 1 1 8rem; /* allow shrinking on small screens */
 }
 
 .note-col input {
   width: 100%;
+}
+
+.exercise-row > .ms-auto {
+  flex: 0 0 auto; /* keep delete button from stretching */
+  margin-left: 0.5rem;
+}
+
+/* Small-screen adjustments to keep note + delete on one line */
+@media (max-width: 576px) {
+  .exercise-name-col { min-width: 8rem; }
+  .note-col { min-width: 5.5rem; max-width: 9rem; flex: 1 1 6rem; }
+  .single-set-row .set-input { width: 3.6rem; min-width: 3.6rem; }
+  .single-set-row .set-note-input { width: 5.5rem; min-width: 5.5rem; }
+  .add-set-group { gap: 0.25rem; }
 }
 
 .exercise-row .ms-auto {

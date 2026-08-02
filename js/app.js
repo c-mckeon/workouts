@@ -165,6 +165,8 @@ const focusCheckbox = document.getElementById('focusCheckbox');
 const focusContainer = document.getElementById('focusContainer');
 
 const selectedExercises = [];
+// Exercise metadata loaded into the dropdown so added exercises preserve editor settings.
+const exerciseMetadataById = {};
 
 // Firebase reference for workout drafts
 const workoutDraftRef = database.ref('workoutDraft');
@@ -352,14 +354,21 @@ addExerciseBtn.addEventListener('click', () => {
     }
 
     const exerciseCategory = selectedOption.dataset.category || selectedOption.parentElement?.label || 'Unknown';
+    const exerciseMetadata = exerciseMetadataById[exerciseId] || {};
+    const fields = Array.isArray(exerciseMetadata.fields) ? exerciseMetadata.fields : ['sets', 'reps'];
+    const trackSetsReps = fields.includes('sets') || fields.includes('reps');
+    const initialSetsList = trackSetsReps ? [{ reps: '', weight: '', note: '' }] : [];
+
     selectedExercises.push({
         id: exerciseId,
         name: exerciseName,
         category: exerciseCategory,
-        sets: 1,
+      fields,
+      customLabel: exerciseMetadata.customLabel || '',
+        sets: trackSetsReps ? 1 : 0,
         reps: 0,
         note: '',
-        setsList: [{ reps: '', weight: '', note: '' }],
+        setsList: initialSetsList,
         activeSetIndex: 0,
         showSR: false
     });
@@ -416,6 +425,7 @@ function renderExerciseDropdown(exercises, frequencyMap = {}, fromFocusAreas = f
   }
 
   dropdownContent = [];  // Reset the global variable before generating new content
+  Object.keys(exerciseMetadataById).forEach(key => delete exerciseMetadataById[key]);
 
   const groupByCategory = document.getElementById("seefocusCheckbox")?.checked;
   const validCategories = Object.keys(exercises)
@@ -448,6 +458,11 @@ function renderExerciseDropdown(exercises, frequencyMap = {}, fromFocusAreas = f
       );
 
       sortedOptions.forEach(({ exerciseId, name }) => {
+        const exerciseFields = Array.isArray(exercises[category][exerciseId]?.fields) ? exercises[category][exerciseId].fields : ['sets', 'reps'];
+        exerciseMetadataById[exerciseId] = {
+          fields: exerciseFields,
+          customLabel: exercises[category][exerciseId]?.customLabel || ''
+        };
         const option = document.createElement("option");
         option.value = exerciseId;
         option.textContent = name;
@@ -476,6 +491,11 @@ function renderExerciseDropdown(exercises, frequencyMap = {}, fromFocusAreas = f
     });
 
     sortOptions(allOptions).forEach(({ exerciseId, name, category }) => {
+      const exerciseFields = Array.isArray(exercises[category][exerciseId]?.fields) ? exercises[category][exerciseId].fields : ['sets', 'reps'];
+      exerciseMetadataById[exerciseId] = {
+        fields: exerciseFields,
+        customLabel: exercises[category][exerciseId]?.customLabel || ''
+      };
       const option = document.createElement("option");
       option.value = exerciseId;
       option.textContent = name;
@@ -842,6 +862,7 @@ loadWorkouts();
 var currentExerciseType = "exercises"; // default type; user can change via typeSelector
 var currentExerciseCategory = null;    // will be set by the category selector
 var exerciseKeys = [];                 // Firebase keys for exercises in the selected category
+var exerciseDataMap = {};             // exercise metadata keyed by Firebase ID
 var currentExerciseIndex = 0;
 
 // Load available categories from the chosen root node (exercises or focusareas)
@@ -882,7 +903,17 @@ document.getElementById("categorySelector").addEventListener("change", function(
   loadExercisesEditor();
 });
 
-// Load exercises for the current type and category for the editor section.
+document.getElementById("exerciseSelector").addEventListener("change", function(e) {
+  currentExerciseIndex = exerciseKeys.indexOf(e.target.value);
+  if (currentExerciseIndex < 0) currentExerciseIndex = 0;
+  displayExercise();
+});
+
+const saveExoBtn = document.getElementById("saveExoBtn");
+const deleteExoBtn = document.getElementById("deleteExoBtn");
+if (saveExoBtn) saveExoBtn.addEventListener("click", saveexo);
+if (deleteExoBtn) deleteExoBtn.addEventListener("click", deleteexo);
+
 function loadExercisesEditor() {
   if (!currentExerciseCategory) return;
   var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory;
@@ -890,8 +921,11 @@ function loadExercisesEditor() {
   
   database.ref(refPath).once("value").then(snapshot => {
     if (snapshot.exists()) {
-      exerciseKeys = Object.keys(snapshot.val());
+      const exerciseData = snapshot.val() || {};
+      exerciseDataMap = exerciseData;
+      exerciseKeys = Object.keys(exerciseData).filter(key => key !== 'note');
       console.log("Exercise Keys:", exerciseKeys); // DEBUG
+      renderExerciseSelector();
       if (exerciseKeys.length > 0) {
         currentExerciseIndex = 0;
         displayExercise();
@@ -902,6 +936,21 @@ function loadExercisesEditor() {
       document.getElementById("exerciseeditorsection").innerHTML = `<p>No data found at ${refPath}.</p>`;
     }
   }).catch(error => console.error("Error fetching exercises:", error));
+}
+
+function renderExerciseSelector() {
+  var selector = document.getElementById("exerciseSelector");
+  if (!selector) return;
+  selector.innerHTML = "";
+  exerciseKeys.forEach(exerciseId => {
+    var option = document.createElement("option");
+    option.value = exerciseId;
+    option.textContent = (exerciseDataMap[exerciseId] && exerciseDataMap[exerciseId].name) ? exerciseDataMap[exerciseId].name : exerciseId;
+    selector.appendChild(option);
+  });
+  if (exerciseKeys.length > 0) {
+    selector.value = exerciseKeys[currentExerciseIndex] || exerciseKeys[0];
+  }
 }
 
 // Display the current exercise for editing/viewing.
@@ -928,19 +977,49 @@ function displayExercise() {
 
     var editorHTML = "";
     if (data) {
+      const fields = Array.isArray(data.fields) ? data.fields : ['sets', 'reps'];
+      const customLabel = data.customLabel || '';
+
       editorHTML += `<h3>Exercise Info</h3>`;
       editorHTML += `
         <label style="display:inline-block; width:50px;">Name:</label>
         <input type="text" id="exercise_name" value="${data.name || ''}"><br>
         <label style="display:inline-block; width:50px;">Note:</label>
         <input type="text" id="exercise_note" value="${data.note || ''}"><br>
+        <div style="margin-top: 10px;">
+          <strong>Track fields:</strong><br>
+          <label><input type="checkbox" class="field-checkbox" value="sets" ${fields.includes('sets') ? 'checked' : ''}> Sets</label>
+          <label><input type="checkbox" class="field-checkbox" value="reps" ${fields.includes('reps') ? 'checked' : ''}> Reps</label>
+          <label><input type="checkbox" class="field-checkbox" value="weight" ${fields.includes('weight') ? 'checked' : ''}> Weight</label>
+          <label><input type="checkbox" class="field-checkbox" value="custom" ${fields.includes('custom') ? 'checked' : ''}> Custom</label>
+        </div>
+        <div id="customFieldContainer" style="margin-top: 10px; ${fields.includes('custom') ? '' : 'display:none;'}">
+          <label style="display:inline-block; width:120px;">Custom field label:</label>
+          <input type="text" id="exercise_custom_label" value="${customLabel}"><br>
+        </div>
         <p>Exercise ${currentExerciseIndex + 1} of ${filteredExerciseKeys.length}</p>
       `;
     } else {
       editorHTML = "<p>No data for this exercise.</p>";
     }
     document.getElementById("exerciseeditorsection").innerHTML = editorHTML;
+    const selector = document.getElementById("exerciseSelector");
+    if (selector) selector.value = exerciseID;
+    setupExerciseTrackingToggle();
   }).catch(error => console.error("Error displaying exercise:", error));
+}
+
+function setupExerciseTrackingToggle() {
+  const customContainer = document.getElementById('customFieldContainer');
+  if (!customContainer) return;
+
+  document.querySelectorAll('.field-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.value === 'custom') {
+        customContainer.style.display = cb.checked ? 'block' : 'none';
+      }
+    });
+  });
 }
 
 // Navigate to the next exercise.
@@ -950,6 +1029,7 @@ function nextexo() {
       currentExerciseIndex = (currentExerciseIndex + 1) % exerciseKeys.length;
     } while (exerciseKeys[currentExerciseIndex] === "note"); // Skip the "note" node
 
+    renderExerciseSelector();
     displayExercise();
   }
 }
@@ -961,6 +1041,7 @@ function prevexo() {
       currentExerciseIndex = (currentExerciseIndex - 1 + exerciseKeys.length) % exerciseKeys.length;
     } while (exerciseKeys[currentExerciseIndex] === "note"); // Skip the "note" node
 
+    renderExerciseSelector();
     displayExercise();
   }
 }
@@ -1009,9 +1090,13 @@ function renderExerciseList() {
 
     const setsList = Array.isArray(exercise.setsList) ? exercise.setsList : [];
     const totalSets = setsList.length;
+    const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
+    const showSetsReps = fields.includes('sets') || fields.includes('reps');
+    const showWeight = fields.includes('weight');
     const totalReps = setsList.reduce((sum, set) => sum + (parseInt(set.reps, 10) || 0), 0);
     const totalWeight = setsList.reduce((sum, set) => sum + ((parseInt(set.reps, 10) || 0) * (parseFloat(set.weight) || 0)), 0);
-    const volumeLabel = totalSets > 0 ? `${totalSets} sets • ${totalReps} reps • ${totalWeight} kg moved` : 'No sets yet';
+    const volumeLabel = showSetsReps && totalSets > 0 ? `${totalSets} sets • ${totalReps} reps • ${totalWeight} kg moved` : '';
+    const volumeDetailsHtml = showSetsReps ? `<div class="volume-details">${volumeLabel || 'No sets yet'}</div>` : '';
     const activeSetIndex = Number.isInteger(exercise.activeSetIndex) ? Math.min(Math.max(exercise.activeSetIndex, 0), Math.max(totalSets - 1, 0)) : 0;
     const currentSet = setsList[activeSetIndex] || { reps: '', weight: '', note: '' };
     const canMoveOlder = totalSets > 1 && activeSetIndex > 0;
@@ -1022,25 +1107,34 @@ function renderExerciseList() {
       <button class="btn btn-sm btn-outline-secondary set-down-btn" data-index="${index}" ${canMoveOlder ? '' : 'disabled'}>▼</button>
     ` : '';
 
+    const addSetButtonHtml = showSetsReps ? `<button class="btn btn-secondary btn-sm add-set-btn" data-index="${index}">Add set</button>` : '';
+    const repsInputHtml = showSetsReps ? `<input type="number" class="form-control form-control-sm set-input set-reps-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.reps || ''}" placeholder="Reps">` : '';
+    const weightInputHtml = showSetsReps && showWeight ? `<input type="number" class="form-control form-control-sm set-input set-weight-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.weight || ''}" placeholder="Weight">` : '';
+    const setNoteHtml = showSetsReps ? `<input type="text" class="form-control form-control-sm set-input set-note-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.note || ''}" placeholder="Note">` : '';
+    const removeSetButtonHtml = showSetsReps ? `<button class="btn btn-sm btn-outline-danger remove-set-btn" data-index="${index}" data-set-index="${activeSetIndex}">×</button>` : '';
+    const setsContainerHtml = showSetsReps ? `
+            <div class="single-set-row">
+              ${navHtml}
+              ${repsInputHtml}
+              ${weightInputHtml}
+              ${setNoteHtml}
+              ${removeSetButtonHtml}
+            </div>
+          ` : '';
+
     exerciseDiv.innerHTML = `
-    <div class="row p-1 align-items-center exercise-row">
+    <div class="row p-1 align-items-center exercise-row" style="flex-wrap:nowrap; gap:0.5rem;">
       <div class="col-auto col-md-2 pe-2 exercise-name-col">
         <span>${exercise.name}</span>
       </div>
       <div class="col-auto d-flex align-items-center gap-2 add-set-group">
-        <button class="btn btn-secondary btn-sm add-set-btn" data-index="${index}">Add set</button>
+        ${addSetButtonHtml}
         <div class="sets-container" id="setsContainer_${index}">
-          <div class="single-set-row">
-            ${navHtml}
-            <input type="number" class="form-control form-control-sm set-input set-reps-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.reps || ''}" placeholder="Reps">
-            <input type="number" class="form-control form-control-sm set-input set-weight-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.weight || ''}" placeholder="Weight">
-            <input type="text" class="form-control form-control-sm set-input set-note-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.note || ''}" placeholder="Note">
-            <button class="btn btn-sm btn-outline-danger remove-set-btn" data-index="${index}" data-set-index="${activeSetIndex}">×</button>
-          </div>
+          ${setsContainerHtml}
         </div>
       </div>
       <div class="col-auto volume-col">
-        <div class="volume-details">${volumeLabel}</div>
+        ${volumeDetailsHtml}
       </div>
       <div class="col-auto note-col">
         <input type="text" class="form-control form-control-sm note-input" placeholder="Exercise note" data-index="${index}" value="${exercise.note || ''}">
@@ -1282,6 +1376,8 @@ function addSetToExercise(exerciseIndex) {
   const index = parseInt(exerciseIndex, 10);
   const exercise = selectedExercises[index];
   if (!exercise) return;
+  const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
+  if (!(fields.includes('sets') || fields.includes('reps'))) return;
   ensureSetsList(exercise);
 
   const lastSet = exercise.setsList[exercise.setsList.length - 1] || { reps: '', weight: '', note: '' };
@@ -1316,10 +1412,12 @@ function updateVolumeSummary() {
     if (!exercise) return;
 
     const setsList = Array.isArray(exercise.setsList) ? exercise.setsList : [];
+    const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
+    const showSetsReps = fields.includes('sets') || fields.includes('reps');
     const totalSets = setsList.length;
     const totalReps = setsList.reduce((sum, set) => sum + (parseInt(set.reps, 10) || 0), 0);
     const totalWeight = setsList.reduce((sum, set) => sum + ((parseInt(set.reps, 10) || 0) * (parseFloat(set.weight) || 0)), 0);
-    const label = totalSets > 0 ? `${totalSets} sets • ${totalReps} reps • ${totalWeight} kg moved` : 'No sets yet';
+    const label = showSetsReps && totalSets > 0 ? `${totalSets} sets • ${totalReps} reps • ${totalWeight} kg moved` : (showSetsReps ? 'No sets yet' : '');
 
     const labelEl = exerciseDiv.querySelector('.volume-details');
     if (labelEl) {
@@ -1456,10 +1554,23 @@ function saveexo() {
   if (exerciseKeys.length === 0) return;
   var exerciseID = exerciseKeys[currentExerciseIndex];
   var refPath = "/" + currentExerciseType + "/" + currentExerciseCategory + "/" + exerciseID;
+
+  var fields = Array.from(document.querySelectorAll('.field-checkbox'))
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+
   var updatedData = {
     name: document.getElementById("exercise_name").value,
-    note: document.getElementById("exercise_note").value
+    note: document.getElementById("exercise_note").value,
+    fields: fields
   };
+
+  var customLabelInput = document.getElementById("exercise_custom_label");
+  if (fields.includes('custom') && customLabelInput) {
+    updatedData.customLabel = customLabelInput.value || '';
+  } else {
+    updatedData.customLabel = '';
+  }
 
   database.ref(refPath).update(updatedData)
     .then(() => {

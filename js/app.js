@@ -168,6 +168,14 @@ const selectedExercises = [];
 // Exercise metadata loaded into the dropdown so added exercises preserve editor settings.
 const exerciseMetadataById = {};
 
+// Normalize stored fields to an array. Accepts arrays or objects (Firebase may store arrays as objects).
+function normalizeFields(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    return Object.values(raw).filter(Boolean);
+  }
+  return [];
+}
 // Firebase reference for workout drafts
 const workoutDraftRef = database.ref('workoutDraft');
 
@@ -355,9 +363,9 @@ addExerciseBtn.addEventListener('click', () => {
 
     const exerciseCategory = selectedOption.dataset.category || selectedOption.parentElement?.label || 'Unknown';
     const exerciseMetadata = exerciseMetadataById[exerciseId] || {};
-    const fields = Array.isArray(exerciseMetadata.fields) ? exerciseMetadata.fields : ['sets', 'reps'];
+    const fields = normalizeFields(exerciseMetadata.fields);
     const trackSetsReps = fields.includes('sets') || fields.includes('reps');
-    const initialSetsList = trackSetsReps ? [{ reps: '', weight: '', note: '' }] : [];
+    const initialSetsList = trackSetsReps ? [{ reps: '', weight: '', note: '', custom: '' }] : [];
 
     selectedExercises.push({
         id: exerciseId,
@@ -458,11 +466,11 @@ function renderExerciseDropdown(exercises, frequencyMap = {}, fromFocusAreas = f
       );
 
       sortedOptions.forEach(({ exerciseId, name }) => {
-        const exerciseFields = Array.isArray(exercises[category][exerciseId]?.fields) ? exercises[category][exerciseId].fields : ['sets', 'reps'];
-        exerciseMetadataById[exerciseId] = {
-          fields: exerciseFields,
-          customLabel: exercises[category][exerciseId]?.customLabel || ''
-        };
+        const exerciseFields = normalizeFields(exercises[category][exerciseId]?.fields);
+          exerciseMetadataById[exerciseId] = {
+            fields: exerciseFields,
+            customLabel: exercises[category][exerciseId]?.customLabel || ''
+          };
         const option = document.createElement("option");
         option.value = exerciseId;
         option.textContent = name;
@@ -491,7 +499,7 @@ function renderExerciseDropdown(exercises, frequencyMap = {}, fromFocusAreas = f
     });
 
     sortOptions(allOptions).forEach(({ exerciseId, name, category }) => {
-      const exerciseFields = Array.isArray(exercises[category][exerciseId]?.fields) ? exercises[category][exerciseId].fields : ['sets', 'reps'];
+      const exerciseFields = normalizeFields(exercises[category][exerciseId]?.fields);
       exerciseMetadataById[exerciseId] = {
         fields: exerciseFields,
         customLabel: exercises[category][exerciseId]?.customLabel || ''
@@ -977,7 +985,7 @@ function displayExercise() {
 
     var editorHTML = "";
     if (data) {
-      const fields = Array.isArray(data.fields) ? data.fields : ['sets', 'reps'];
+      const fields = normalizeFields(data?.fields);
       const customLabel = data.customLabel || '';
 
       editorHTML += `<h3>Exercise Info</h3>`;
@@ -1088,17 +1096,24 @@ function renderExerciseList() {
     const exerciseDiv = document.createElement('div');
     exerciseDiv.className = 'exercise-item';
 
+    // Ensure sets list exists and enforce at least one set for exercises that track sets/reps
+    ensureSetsList(exercise);
+    const fields = normalizeFields(exercise.fields);
+    const showSetsReps = fields.includes('sets') || fields.includes('reps');
+    if (showSetsReps && (!Array.isArray(exercise.setsList) || exercise.setsList.length === 0)) {
+      exercise.setsList = [{ reps: '', weight: '', note: '', custom: '' }];
+      exercise.activeSetIndex = 0;
+    }
     const setsList = Array.isArray(exercise.setsList) ? exercise.setsList : [];
     const totalSets = setsList.length;
-    const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
-    const showSetsReps = fields.includes('sets') || fields.includes('reps');
     const showWeight = fields.includes('weight');
+    const showCustom = fields.includes('custom');
     const totalReps = setsList.reduce((sum, set) => sum + (parseInt(set.reps, 10) || 0), 0);
     const totalWeight = setsList.reduce((sum, set) => sum + ((parseInt(set.reps, 10) || 0) * (parseFloat(set.weight) || 0)), 0);
     const volumeLabel = showSetsReps && totalSets > 0 ? `${totalSets} sets • ${totalReps} reps • ${totalWeight} kg moved` : '';
     const volumeDetailsHtml = showSetsReps ? `<div class="volume-details">${volumeLabel || 'No sets yet'}</div>` : '';
     const activeSetIndex = Number.isInteger(exercise.activeSetIndex) ? Math.min(Math.max(exercise.activeSetIndex, 0), Math.max(totalSets - 1, 0)) : 0;
-    const currentSet = setsList[activeSetIndex] || { reps: '', weight: '', note: '' };
+    const currentSet = setsList[activeSetIndex] || { reps: '', weight: '', note: '', custom: '' };
     const canMoveOlder = totalSets > 1 && activeSetIndex > 0;
     const canMoveNewer = totalSets > 1 && activeSetIndex < totalSets - 1;
     const navHtml = totalSets >= 1 ? `
@@ -1110,6 +1125,7 @@ function renderExerciseList() {
     const addSetButtonHtml = showSetsReps ? `<button class="btn btn-secondary btn-sm add-set-btn" data-index="${index}">Add set</button>` : '';
     const repsInputHtml = showSetsReps ? `<input type="number" class="form-control form-control-sm set-input set-reps-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.reps || ''}" placeholder="Reps">` : '';
     const weightInputHtml = showSetsReps && showWeight ? `<input type="number" class="form-control form-control-sm set-input set-weight-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.weight || ''}" placeholder="Weight">` : '';
+    const customInputHtml = showSetsReps && showCustom ? `<input type="text" class="form-control form-control-sm set-input set-custom-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.custom || ''}" placeholder="${exercise.customLabel || 'Custom'}">` : '';
     const setNoteHtml = showSetsReps ? `<input type="text" class="form-control form-control-sm set-input set-note-input" data-index="${index}" data-set-index="${activeSetIndex}" value="${currentSet.note || ''}" placeholder="Note">` : '';
     const removeSetButtonHtml = showSetsReps ? `<button class="btn btn-sm btn-outline-danger remove-set-btn" data-index="${index}" data-set-index="${activeSetIndex}">×</button>` : '';
     const setsContainerHtml = showSetsReps ? `
@@ -1117,29 +1133,30 @@ function renderExerciseList() {
               ${navHtml}
               ${repsInputHtml}
               ${weightInputHtml}
+              ${customInputHtml}
               ${setNoteHtml}
               ${removeSetButtonHtml}
             </div>
           ` : '';
 
     exerciseDiv.innerHTML = `
-    <div class="row p-1 align-items-center exercise-row" style="flex-wrap:nowrap; gap:0.5rem;">
-      <div class="col-auto col-md-2 pe-2 exercise-name-col">
+    <div class="exercise-row p-1">
+      <div class="exercise-name-col">
         <span>${exercise.name}</span>
       </div>
-      <div class="col-auto d-flex align-items-center gap-2 add-set-group">
+      <div class="sets-col">
         ${addSetButtonHtml}
         <div class="sets-container" id="setsContainer_${index}">
           ${setsContainerHtml}
         </div>
       </div>
-      <div class="col-auto volume-col">
+      <div class="volume-col">
         ${volumeDetailsHtml}
       </div>
-      <div class="col-auto note-col">
+      <div class="note-col">
         <input type="text" class="form-control form-control-sm note-input" placeholder="Exercise note" data-index="${index}" value="${exercise.note || ''}">
       </div>
-      <div class="col-auto ms-auto">
+      <div class="remove-col">
         <button class="btn btn-danger btn-sm remove-btn" data-index="${index}">X</button>
       </div>
     </div>
@@ -1246,6 +1263,12 @@ function setupDraftListeners() {
       selectedExercises[exerciseIndex].setsList[setIndex].weight = target.value;
       saveWorkoutDraft();
       updateVolumeSummary();
+      return;
+    }
+
+    if (target.matches('.set-custom-input')) {
+      selectedExercises[exerciseIndex].setsList[setIndex].custom = target.value;
+      saveWorkoutDraft();
       return;
     }
 
@@ -1376,15 +1399,16 @@ function addSetToExercise(exerciseIndex) {
   const index = parseInt(exerciseIndex, 10);
   const exercise = selectedExercises[index];
   if (!exercise) return;
-  const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
+  const fields = normalizeFields(exercise.fields);
   if (!(fields.includes('sets') || fields.includes('reps'))) return;
   ensureSetsList(exercise);
 
-  const lastSet = exercise.setsList[exercise.setsList.length - 1] || { reps: '', weight: '', note: '' };
+  const lastSet = exercise.setsList[exercise.setsList.length - 1] || { reps: '', weight: '', note: '', custom: '' };
   exercise.setsList.push({
     reps: lastSet.reps || '',
     weight: lastSet.weight || '',
-    note: lastSet.note || ''
+    note: lastSet.note || '',
+    custom: lastSet.custom || ''
   });
   exercise.activeSetIndex = exercise.setsList.length - 1;
 
@@ -1412,7 +1436,7 @@ function updateVolumeSummary() {
     if (!exercise) return;
 
     const setsList = Array.isArray(exercise.setsList) ? exercise.setsList : [];
-    const fields = Array.isArray(exercise.fields) ? exercise.fields : ['sets', 'reps'];
+    const fields = normalizeFields(exercise.fields);
     const showSetsReps = fields.includes('sets') || fields.includes('reps');
     const totalSets = setsList.length;
     const totalReps = setsList.reduce((sum, set) => sum + (parseInt(set.reps, 10) || 0), 0);
@@ -1562,8 +1586,13 @@ function saveexo() {
   var updatedData = {
     name: document.getElementById("exercise_name").value,
     note: document.getElementById("exercise_note").value,
-    fields: fields
   };
+
+  // Convert fields array to an object form for reliable Firebase storage (handles empty arrays)
+  updatedData.fields = {};
+  if (Array.isArray(fields) && fields.length > 0) {
+    fields.forEach((f, i) => { updatedData.fields[i] = f; });
+  }
 
   var customLabelInput = document.getElementById("exercise_custom_label");
   if (fields.includes('custom') && customLabelInput) {

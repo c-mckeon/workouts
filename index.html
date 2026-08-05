@@ -197,7 +197,7 @@
     
   <hr>
 
-  <div class="row p-3">
+  <div class="row p-3 hidden" id="showchart">
     <div class="col-5" id="showchart">
       <button style="width: 135px;" id="showchartbtn" class="click">Show chart</button>
       <select id="filter-type" onchange="generatevisuals()">
@@ -212,7 +212,7 @@
     <div id="visuals-container"></div>
   </div>
 
-  <hr>
+
 
   <div class="row p-3">
     <div class="col-5" id="showworkouts">
@@ -246,6 +246,7 @@
   <script src="js/analytics.js" defer></script>
   <script src="js/auth.js" defer></script>
   <script src="js/progress.js" defer></script>
+  <script src="js/volume.js" defer></script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
@@ -271,42 +272,38 @@
   
 
   <div class="row p-3" id="progressdiv">
-    <!-- Add and Edit Section -->
     <div class="col-12">
       <button style="width: 135px;" id="toggleprogressBtn">Show progress</button>
-      <div id="progressarea" class="hidden"><section id="Progress section" style="margin-top: 10px;">
-  
-        <select id="ORMexerciseInput" style="width: 160px;">
+      <div id="progressarea" class="hidden">
+        <section id="Progress section" style="margin-top: 10px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button type="button" id="progressViewE1RM" class="btn btn-sm btn-outline-primary progress-view-btn active" data-view="e1RM">e1RM</button>
+            <button type="button" id="progressViewAvgVolume" class="btn btn-sm btn-outline-primary progress-view-btn" data-view="avg3Volume">Average 3-set volume</button>
+            <button type="button" id="progressViewBestEfforts" class="btn btn-sm btn-outline-primary progress-view-btn" data-view="bestEfforts">Best efforts</button>
+          </div>
 
-          <!-- Add other exercises as needed -->
-        </select>
-        <input type="number" id="ORMrepsInput" placeholder="Reps (4-6)" />
-        <input type="number" id="ORMweightInput" placeholder="Weight (kg)" />
-        <button onclick="handleRecordMaxEffort()">Record max effort set</button>
-  
-        <select id="ORMexerciseDropdown" style="width: 160px;" class="hidden">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+            <select id="ORMexerciseInput" style="width: 180px;" class="form-control form-control-sm"></select>
+            <input type="number" id="ORMrepsInput" placeholder="Reps (4-6)" class="form-control form-control-sm" style="width:110px;" />
+            <input type="number" id="ORMweightInput" placeholder="Weight (kg)" class="form-control form-control-sm" style="width:110px;" />
+            <button type="button" id="recordE1RMBtn" class="btn btn-sm btn-outline-success">Record max effort set</button>
+            <select id="ORMexerciseDataFilter" style="width: 180px;" class="form-control form-control-sm">
+              <option value="all">All exercises</option>
+            </select>
+            <button type="button" id="showDataButton" class="btn btn-sm btn-outline-secondary">Show Data</button>
+          </div>
 
-          <!-- Add other exercises as needed -->
-        </select>
-        
-        <button onclick="generateChart()">Chart</button>     
-        <br>   <br>
-            
-            <canvas id="progress-chart" width="800" height="500"></canvas>
-            <button id="toggleButton" class="hidden">Show Data</button>
+          <div id="progressTableWrapper" style="overflow-x:auto; margin-bottom:12px;">
+            <table id="progressTable" class="table table-sm table-bordered" style="min-width:760px; table-layout:fixed;">
+              <thead id="progressTableHead"></thead>
+              <tbody id="progressTableBody"></tbody>
+            </table>
+          </div>
 
-            <ul id="performanceList" class="hidden"></ul>
-      </div>
+          <ul id="performanceList" class="hidden" style="padding-left:20px; margin-top:10px;"></ul>
+        </section>
       </div>
     </div>
-  </div>
-  
-
-
-          
-           
-          </section>
-      </div>
   </div>
 
 
@@ -326,6 +323,64 @@
     .hidden {
       display: none;
     }
+    /* Workout draft grid styles */
+    #exerciseList {
+      width: 100%;
+    }
+    .exercise-item {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 0.5rem;
+    }
+    .exercise-row {
+      display: grid;
+      grid-template-columns: 220px 500px 210px minmax(220px, 1fr) 72px;
+      gap: 0.75rem;
+      align-items: center;
+      white-space: nowrap;
+      min-width: 980px;
+    }
+    .exercise-name-col {
+      min-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sets-col {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 360px;
+    }
+    .volume-col {
+      min-width: 180px;
+    }
+    .note-col {
+      min-width: 220px;
+    }
+    .remove-col {
+      min-width: 72px;
+    }
+    .sets-container {
+      width: 100%;
+    }
+    .single-set-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+    .single-set-row .set-input {
+      width: 72px;
+      min-width: 72px;
+    }
+    .single-set-row .set-counter {
+      min-width: 48px;
+      text-align: center;
+    }
+    .note-col .form-control {
+      width: 100%;
+      min-width: 220px;
+    }
   </style>
 
 <script data-goatcounter="https://workouts.goatcounter.com/count"
@@ -341,25 +396,64 @@
       <button style="width: 135px;" id="toggleVolumeBtn">Show Volume</button>
       <div id="volumearea" class="hidden" style="margin-top: 10px;">
         <section id="Volume section" style="margin-top: 10px;">
-          <div class="volume-header" style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <div class="volume-header" style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
             <button id="volumePrevMonth" class="btn btn-sm btn-outline-secondary">←</button>
             <span id="volumeMonthLabel" style="font-weight:600; font-size:1rem;"></span>
             <button id="volumeNextMonth" class="btn btn-sm btn-outline-secondary">→</button>
           </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button type="button" class="btn btn-sm btn-outline-primary volume-view-btn active" data-view="sofar">So Far</button>
+            <button type="button" class="btn btn-sm btn-outline-primary volume-view-btn" data-view="monthly">Monthly</button>
+            <button type="button" class="btn btn-sm btn-outline-primary volume-view-btn" data-view="coverage">Cov. by month</button>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <button type="button" id="toggleMuscleMatrixBtn" class="btn btn-sm btn-outline-secondary">Show matrix</button>
+            <div id="muscleMatrixArea" class="hidden" style="margin-top: 8px;">
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                <button type="button" id="addMuscleGroupBtn" class="btn btn-sm btn-outline-secondary">Add muscle group</button>
+                <button type="button" id="removeMuscleGroupBtn" class="btn btn-sm btn-outline-secondary">Remove muscle group</button>
+                <button type="button" id="addExerciseRowBtn" class="btn btn-sm btn-outline-secondary">Add exercise</button>
+                <button type="button" id="removeExerciseRowBtn" class="btn btn-sm btn-outline-secondary">Remove exercise</button>
+              </div>
+              <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+                <div style="flex:1 1 480px;">
+                  <div style="overflow-x:auto;">
+                    <table id="muscleMatrixTable" class="table table-sm table-bordered" style="width: auto; max-width: 100%; background:#fff; margin: 0 auto; table-layout: fixed;">
+                      <thead>
+                        <tr id="muscleGroupHeaderRow"></tr>
+                      </thead>
+                      <tbody id="muscleMatrixBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div style="flex:0 0 240px; min-width:220px;">
+                  <div style="font-weight:600; margin-bottom:8px;">Targets</div>
+                  <label class="form-label form-label-sm" for="targetMonthSelect" style="margin-bottom:4px;">Month</label>
+                  <select id="targetMonthSelect" class="form-control form-control-sm"></select>
+                  <div id="targetEditorRows" style="margin-top:8px;"></div>
+                  <button type="button" id="saveTargetsBtn" class="btn btn-sm btn-primary" style="margin-top:8px;">Save targets</button>
+                </div>
+              </div>
+              <button type="button" id="saveMuscleMatrixBtn" class="btn btn-sm btn-primary" style="margin-top: 8px;">Save matrix</button>
+            </div>
+          </div>
+
           <div id="volumeTableWrapper" style="overflow-x:auto;">
-            <table id="volumeTable" class="table table-sm table-bordered" style="min-width:520px;">
+            <table id="volumeTable" class="table table-sm table-bordered" style="min-width:460px; table-layout:fixed;">
               <thead>
                 <tr>
-                  <th>Exercise</th>
-                  <th>Sets</th>
-                  <th>Reps</th>
-                  <th>Avg weight per set (kg)</th>
+                  <th>Muscle group</th>
+                  <th>Direct Sets</th>
+                  <th>Effective Sets</th>
+                  <th>Target</th>
+                  <th>On Track</th>
                 </tr>
               </thead>
               <tbody id="volumeTableBody"></tbody>
             </table>
           </div>
-          <div id="volumeEmptyMessage" style="padding:12px; color:#555;">Loading volume data...</div>
         </section>
       </div>
     </div>

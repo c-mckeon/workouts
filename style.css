@@ -57,21 +57,25 @@
 }
 
 .exercise-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 8rem minmax(16rem, 1fr) 9.5rem 9rem 3.2rem;
+  gap: 0.35rem;
   align-items: center;
-  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
 }
 
 .exercise-name-col {
-  min-width: 10rem;
-  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
 }
 
 .add-set-group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .single-set-row {
@@ -82,15 +86,20 @@
 }
 
 .single-set-row .set-input {
-  width: 4.5rem;
-  min-width: 4.5rem;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
+  width: 3rem;
+  min-width: 3rem;
+  padding: 0.22rem 0.35rem;
+  font-size: 0.82rem;
+}
+
+.single-set-row .set-custom-input {
+  width: 4.6rem;
+  min-width: 4.6rem;
 }
 
 .single-set-row .set-note-input {
-  width: 6rem;
-  min-width: 6rem;
+  width: 4.6rem;
+  min-width: 4.6rem;
 }
 
 .single-set-row .remove-set-btn,

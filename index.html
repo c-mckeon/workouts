@@ -324,64 +324,85 @@
       display: none;
     }
     /* Workout draft grid styles */
-    #exerciseList {
-      width: 100%;
-    }
-    .exercise-item {
-      width: 100%;
-      overflow-x: hidden;
-      margin-bottom: 0.5rem;
-    }
-    .exercise-row {
-      display: grid;
-      grid-template-columns: 220px 500px 210px 200px 72px;
-      gap: 0.75rem;
-      align-items: center;
-      white-space: nowrap;
-      min-width: 280px;
-    }
-    .exercise-name-col {
-      min-width: 220px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .sets-col {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      min-width: 360px;
-    }
-    .volume-col {
-      min-width: 180px;
-      text-overflow: ellipsis;
-    }
-    .note-col {
-      min-width: 160px;
-    }
-    .remove-col {
-      min-width: 72px;
-    }
-    .sets-container {
-      width: 100%;
-    }
-    .single-set-row {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: nowrap;
-    }
-    .single-set-row .set-input {
-      width: 72px;
-      min-width: 72px;
-    }
-    .single-set-row .set-counter {
-      min-width: 48px;
-      text-align: center;
-    }
-    .note-col .form-control {
-      width: 100%;
-      min-width: 160px;
-    }
+    
+#exerciseList {
+    width: 100%;
+}
+
+.exercise-item {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    overflow: visible;
+}
+
+.exercise-row {
+    display: grid;
+    grid-template-columns: 220px 500px 210px 200px 72px;
+    gap: 0.75rem;
+    width: max-content;
+    min-width: 1200px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.exercise-name-col {
+    min-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sets-col {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 500px;
+}
+
+.volume-col {
+    min-width: 210px;
+}
+
+.note-col {
+    min-width: 200px;
+}
+
+.remove-col {
+    min-width: 72px;
+}
+
+.sets-container {
+    width: 100%;
+}
+
+.single-set-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.single-set-row .set-input {
+    width: 72px;
+    min-width: 72px;
+}
+
+.single-set-row .set-counter {
+    min-width: 48px;
+    text-align: center;
+}
+
+.note-col .form-control {
+    width: 100%;
+    min-width: 160px;
+}
+
+
+/* Allow the actual page to be wider than the viewport */
+html,
+body {
+    overflow-x: auto;
+}
+
   </style>
 
 <script data-goatcounter="https://workouts.goatcounter.com/count"
